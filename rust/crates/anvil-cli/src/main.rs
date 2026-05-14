@@ -9653,7 +9653,7 @@ fn format_tool_call_start(name: &str, input: &str) -> String {
 
     let border = "─".repeat(name.len() + 8);
     format!(
-        "\x1b[38;5;244m╭─ \x1b[38;5;244m{name}\x1b[0;38;5;244m ─╮\x1b[0m\n\x1b[38;5;244m│\x1b[0m {detail}\n\x1b[38;5;244m╰{border}╯\x1b[0m"
+        "\x1b[2m\x1b[38;5;244m╭─ \x1b[38;5;244m{name}\x1b[0m\x1b[2m \x1b[38;5;244m─╮\x1b[0m\n\x1b[2m\x1b[38;5;244m│\x1b[0m\x1b[2m {detail}\x1b[0m\n\x1b[2m\x1b[38;5;244m╰{border}╯\x1b[0m"
     )
 }
 
