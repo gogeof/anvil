@@ -5131,6 +5131,31 @@ impl LiveCli {
         bare: bool,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let mut system_prompt = build_system_prompt(&model)?;
+        // If the model is still the default and settings has a "default" alias, use it
+        let model = if model == DEFAULT_MODEL {
+            let cwd = std::env::current_dir().ok();
+            if let Some(cwd) = cwd {
+                let loader = runtime::ConfigLoader::default_for(&cwd);
+                let config = loader.load().ok();
+                if let Some(config) = config {
+                    if let Some(aliases) = config.get("aliases").and_then(|v| v.as_object()) {
+                        if let Some(default_alias) = aliases.get("default").and_then(|v| v.as_str()) {
+                            default_alias.to_string()
+                        } else {
+                            model
+                        }
+                    } else {
+                        model
+                    }
+                } else {
+                    model
+                }
+            } else {
+                model
+            }
+        } else {
+            model
+        };
         // If json_schema is provided, append JSON schema instructions to the system prompt
         if let Some(schema) = &json_schema {
             system_prompt.push(format!(
@@ -5299,7 +5324,7 @@ impl LiveCli {
                 }
                 if let Some(event) = summary.auto_compaction {
                     println!(
-                        "{}",
+                        "\x1b[2m\x1b[38;5;244m{}\x1b[0m",
                         format_auto_compaction_notice(event.removed_message_count)
                     );
                 }
