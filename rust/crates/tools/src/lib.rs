@@ -2851,6 +2851,13 @@ fn execute_web_search(input: &WebSearchInput) -> Result<WebSearchOutput, String>
     let started = Instant::now();
     let client = build_http_client()?;
     let search_url = build_search_url(&input.query)?;
+
+    // If the search URL is a JSON API (e.g. SearXNG with ?format=json),
+    // parse JSON response directly instead of scraping HTML.
+    if search_url.to_string().contains("format=json") {
+        return execute_json_api_search(&client, &search_url, &input, &started);
+    }
+
     let response = client
         .get(search_url)
         .send()
@@ -2900,6 +2907,78 @@ fn execute_web_search(input: &WebSearchInput) -> Result<WebSearchOutput, String>
         duration_seconds: started.elapsed().as_secs_f64(),
     })
 }
+/// Execute a search against a JSON API (e.g. SearXNG with format=json).
+/// Parses the JSON response directly instead of scraping HTML.
+fn execute_json_api_search(
+    client: &Client,
+    search_url: &reqwest::Url,
+    input: &WebSearchInput,
+    started: &Instant,
+) -> Result<WebSearchOutput, String> {
+    let response = client
+        .get(search_url.clone())
+        .send()
+        .map_err(|error| format!("JSON search request failed: {error}"))?;
+
+    let body = response.text().map_err(|error| format!("JSON search read failed: {error}"))?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&body).map_err(|e| format!("JSON search parse failed: {e}"))?;
+
+    let mut hits = Vec::new();
+
+    // SearXNG JSON API format: { "results": [{ "title": ..., "url": ..., "content": ... }] }
+    if let Some(results) = parsed.get("results").and_then(Value::as_array) {
+        for item in results {
+            let title = item.get("title").and_then(Value::as_str).unwrap_or("");
+            let url = item.get("url").and_then(Value::as_str).unwrap_or("");
+            let _content = item.get("content").and_then(Value::as_str).unwrap_or("");
+            if !url.is_empty() {
+                hits.push(SearchHit {
+                    title: title.to_string(),
+                    url: url.to_string(),
+                });
+            }
+        }
+    }
+
+    if let Some(allowed) = input.allowed_domains.as_ref() {
+        hits.retain(|hit| host_matches_list(&hit.url, allowed));
+    }
+    if let Some(blocked) = input.blocked_domains.as_ref() {
+        hits.retain(|hit| !host_matches_list(&hit.url, blocked));
+    }
+
+    dedupe_hits(&mut hits);
+    hits.truncate(8);
+
+    let summary = if hits.is_empty() {
+        format!("No web search results matched the query {:?}.", input.query)
+    } else {
+        let rendered_hits = hits
+            .iter()
+            .map(|hit| format!("- [{}]({})", hit.title, hit.url))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!(
+            "Search results for {:?}. Include a Sources section in the final answer.\n{}",
+            input.query, rendered_hits
+        )
+    };
+
+    Ok(WebSearchOutput {
+        query: input.query.clone(),
+        results: vec![
+            WebSearchResultItem::Commentary(summary),
+            WebSearchResultItem::SearchResult {
+                tool_use_id: String::from("web_search_1"),
+                content: hits,
+            },
+        ],
+        duration_seconds: started.elapsed().as_secs_f64(),
+    })
+}
+
+
 
 fn build_http_client() -> Result<Client, String> {
     Client::builder()
