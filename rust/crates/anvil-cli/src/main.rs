@@ -5267,24 +5267,19 @@ impl LiveCli {
 
     fn run_turn(&mut self, input: &str) -> Result<(), Box<dyn std::error::Error>> {
         let (mut runtime, hook_abort_monitor) = self.prepare_turn_runtime(false)?;
-        let mut spinner = Spinner::new();
         let mut stdout = io::stdout();
-        spinner.tick(
-            "🔨 Thinking...",
-            TerminalRenderer::new().color_theme(),
-            &mut stdout,
-        )?;
+        // Static thinking indicator (no spinner animation)
+        write!(stdout, "\x1b[2m\x1b[38;5;244m🔨 Thinking...\x1b[0m\n")?;
+        stdout.flush()?;
         let mut permission_prompter = CliPermissionPrompter::new(self.permission_mode);
         let result = runtime.run_turn(input, Some(&mut permission_prompter));
         hook_abort_monitor.stop();
         match result {
             Ok(summary) => {
                 self.replace_runtime(runtime)?;
-                spinner.finish(
-                    "✨ Done",
-                    TerminalRenderer::new().color_theme(),
-                    &mut stdout,
-                )?;
+                // Clear the thinking line and show done
+                write!(stdout, "\x1b[1A\x1b[2K\x1b[38;5;244m🔨 Done\x1b[0m\n")?;
+                stdout.flush()?;
                 println!("\x1b[2m{}\x1b[0m", "─".repeat(50));
                 let final_text = final_assistant_text(&summary);
                 if !final_text.is_empty() {
@@ -5302,11 +5297,8 @@ impl LiveCli {
             }
             Err(error) => {
                 runtime.shutdown_plugins()?;
-                spinner.fail(
-                    "❌ Request failed",
-                    TerminalRenderer::new().color_theme(),
-                    &mut stdout,
-                )?;
+                write!(stdout, "\x1b[1A\x1b[2K\x1b[38;5;244m🔨 Failed\x1b[0m\n")?;
+                stdout.flush()?;
                 Err(Box::new(error))
             }
         }
