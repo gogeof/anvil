@@ -527,6 +527,13 @@ pub fn mvp_tool_specs() -> Vec<ToolSpec> {
                     "blocked_domains": {
                         "type": "array",
                         "items": { "type": "string" }
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20,
+                        "default": 8,
+                        "description": "Maximum number of search results to return (default: 8, max: 20)"
                     }
                 },
                 "required": ["query"],
@@ -2319,6 +2326,7 @@ struct WebSearchInput {
     query: String,
     allowed_domains: Option<Vec<String>>,
     blocked_domains: Option<Vec<String>>,
+    max_results: Option<usize>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2849,6 +2857,7 @@ fn execute_web_fetch(input: &WebFetchInput) -> Result<WebFetchOutput, String> {
 
 fn execute_web_search(input: &WebSearchInput) -> Result<WebSearchOutput, String> {
     let started = Instant::now();
+    let max = input.max_results.unwrap_or(8).min(20);
     let client = build_http_client()?;
     let search_url = build_search_url(&input.query)?;
 
@@ -2879,7 +2888,7 @@ fn execute_web_search(input: &WebSearchInput) -> Result<WebSearchOutput, String>
     }
 
     dedupe_hits(&mut hits);
-    hits.truncate(8);
+    hits.truncate(max);
 
     let summary = if hits.is_empty() {
         format!("No web search results matched the query {:?}.", input.query)
@@ -2915,6 +2924,7 @@ fn execute_json_api_search(
     input: &WebSearchInput,
     started: &Instant,
 ) -> Result<WebSearchOutput, String> {
+    let max = input.max_results.unwrap_or(8).min(20);
     let response = client
         .get(search_url.clone())
         .send()
@@ -2949,7 +2959,7 @@ fn execute_json_api_search(
     }
 
     dedupe_hits(&mut hits);
-    hits.truncate(8);
+    hits.truncate(max);
 
     let summary = if hits.is_empty() {
         format!("No web search results matched the query {:?}.", input.query)
