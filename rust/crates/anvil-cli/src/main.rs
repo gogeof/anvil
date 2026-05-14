@@ -9758,8 +9758,8 @@ const DISPLAY_TRUNCATION_NOTICE: &str =
     "\x1b[2m… output truncated for display; full result preserved in session.\x1b[0m";
 const READ_DISPLAY_MAX_LINES: usize = 80;
 const READ_DISPLAY_MAX_CHARS: usize = 6_000;
-const TOOL_OUTPUT_DISPLAY_MAX_LINES: usize = 60;
-const TOOL_OUTPUT_DISPLAY_MAX_CHARS: usize = 4_000;
+const TOOL_OUTPUT_DISPLAY_MAX_LINES: usize = 8;
+const TOOL_OUTPUT_DISPLAY_MAX_CHARS: usize = 400;
 
 fn extract_tool_path(parsed: &serde_json::Value) -> String {
     parsed
