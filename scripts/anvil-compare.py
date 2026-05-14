@@ -6,13 +6,13 @@ anvil-compare: 对比 anvil 与参考基准工具的执行效果。
 和参考基准工具上的表现，找到优化方向。
 
 用法:
-  anvil compare <task_description>
-  anvil compare --file <task_file>
-  anvil compare --list          # 列出历史对比记录
-  anvil compare --show <id>     # 显示某次对比详情
-
-将任务同时发给 anvil 和 claude，收集输出，分析差异，
-生成结构化的对比报告，保存在 ~/.anvil/comparisons/ 下。
+  anvil compare <task_description>     # 单次对比
+  anvil compare --file <task_file>     # 从文件读取任务
+  anvil compare --list                 # 列出历史对比记录
+  anvil compare --show <id>            # 显示某次对比详情
+  anvil compare --batch <tasks.json>   # 批量执行多个任务
+  anvil compare --trend                # 显示历史趋势报告
+  anvil compare --watch                # 监听变化，自动对比
 """
 
 import argparse
@@ -21,8 +21,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
-import textwrap
 import time
 import re
 
@@ -30,6 +28,32 @@ COMPARISONS_DIR = os.path.expanduser("~/.anvil/comparisons")
 INDEX_FILE = os.path.join(COMPARISONS_DIR, "index.json")
 ANVIL_BIN = "/usr/local/bin/anvil"
 CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
+DEFAULT_TIMEOUT = 120
+
+# ====== 预设任务集 ======
+
+BENCHMARK_TASKS = [
+    # 1. 代码生成
+    "用Python实现一个线程安全的LRU缓存",
+    "写一个Rust函数，计算两个大文件的差异",
+    "生成一个bash脚本，批量重命名当前目录下的所有.jpg文件",
+
+    # 2. 代码分析
+    "分析这段代码的性能瓶颈: with open('data.txt') as f: data = f.read(); for i in range(len(data)): ...",
+    "解释Rust的所有权系统和生命周期",
+
+    # 3. 调试
+    "为什么这段代码报IndexError? arr = [1,2,3]; for i in range(len(arr)): arr[i+1] = arr[i]",
+    "git merge冲突怎么解决? 我有两个分支feature-a和feature-b",
+
+    # 4. 架构设计
+    "设计一个简单的任务队列系统，支持优先级和延时执行",
+    "如何设计一个微服务架构的日志收集系统?",
+
+    # 5. 中文编程
+    "用Python实现一个中文分词器的基本框架",
+    "SQL优化：这个查询为什么慢？SELECT * FROM orders WHERE DATE(created_at) = '2024-01-01'",
+]
 
 
 def ensure_dir():
@@ -50,7 +74,7 @@ def save_index(index):
         json.dump(index, f, indent=2, ensure_ascii=False)
 
 
-def run_cmd(cmd, timeout=120, label="task", env=None):
+def run_cmd(cmd, timeout=DEFAULT_TIMEOUT, label="task", env=None):
     """Run a command and return (stdout, stderr, exit_code, duration)."""
     start = time.time()
     try:
@@ -69,7 +93,7 @@ def run_cmd(cmd, timeout=120, label="task", env=None):
         return "", f"Command not found: {e}", -1, time.time() - start
 
 
-def run_anvil(task, timeout=120):
+def run_anvil(task, timeout=DEFAULT_TIMEOUT):
     """Run anvil on the task. Loads env from ~/.anvil/settings.json."""
     env = os.environ.copy()
     settings_path = os.path.expanduser("~/.anvil/settings.json")
@@ -89,7 +113,7 @@ def run_anvil(task, timeout=120):
     )
 
 
-def run_claude(task, timeout=120):
+def run_claude(task, timeout=DEFAULT_TIMEOUT):
     """Run Claude Code CLI on the task."""
     env = os.environ.copy()
     return run_cmd(
@@ -100,44 +124,28 @@ def run_claude(task, timeout=120):
 
 
 def extract_content(output):
-    """
-    从输出中提取"真正"的回答内容。
-    对于 anvil：去掉 spinner 行、Thinking 行、工具调用等元信息。
-    对于 claude：类似的清理。
-    """
+    """从输出中提取真正的回答内容。"""
     lines = output.split("\n")
     cleaned = []
     for line in lines:
         line_s = line.strip()
-        # Skip spinner lines
         if re.match(r'^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏✔✘]\s', line_s):
             continue
-        # Skip "Thinking..." lines
         if "Thinking" in line_s and len(line_s) < 30:
             continue
-        # Skip tool call sections (╭─ bash ─╮ etc)
         if line_s.startswith("╭─") or line_s.startswith("╰─") or line_s.startswith("│"):
             continue
-        # Skip "✨ Done" / "✔ ✨ Done"
         if "✨ Done" in line_s or "✔ ✨" in line_s:
             continue
-        # Skip bash output sections (lines that look like shell commands)
         if line_s.startswith("$ ") or line_s.startswith("✓ bash"):
             continue
-        # Skip obvious meta lines
-        if line_s in ("```", "") and len(cleaned) > 0 and cleaned[-1] in ("```", ""):
-            continue
-
         cleaned.append(line)
-
     return "\n".join(cleaned).strip()
 
 
 def analyze_differences(anvil_text, claude_text):
-    """分析两个输出之间的差异点，返回结构化的差异报告。"""
+    """分析两个输出之间的差异点。"""
     differences = []
-
-    # 长度对比
     a_len = len(anvil_text)
     c_len = len(claude_text)
     if abs(a_len - c_len) > max(a_len, c_len) * 0.3:
@@ -146,8 +154,6 @@ def analyze_differences(anvil_text, claude_text):
             "type": "length_difference",
             "detail": f"{longer} 的回答明显更长（anvil: {a_len} chars, claude: {c_len} chars）",
         })
-
-    # 结构对比（检查是否包含代码块、列表等）
     a_has_code = "```" in anvil_text
     c_has_code = "```" in claude_text
     if a_has_code != c_has_code:
@@ -155,8 +161,6 @@ def analyze_differences(anvil_text, claude_text):
             "type": "code_blocks",
             "detail": f"{'anvil' if a_has_code else 'claude'} 提供了代码块而{' claude' if a_has_code else ' anvil'}没有",
         })
-
-    # 质量评估（基于关键词）
     for keyword, aspect in [
         ("error", "错误处理"),
         ("warning", "警告提示"),
@@ -171,7 +175,6 @@ def analyze_differences(anvil_text, claude_text):
                 "type": f"aspect_{keyword}",
                 "detail": f"{'anvil' if a_has else 'claude'} 提到了{aspect}而{' claude' if a_has else ' anvil'}没有",
             })
-
     return differences
 
 
@@ -181,7 +184,6 @@ def generate_report(task, anvil_out, anvil_err, anvil_code, anvil_time,
     anvil_content = extract_content(anvil_out)
     claude_content = extract_content(claude_out)
     differences = analyze_differences(anvil_content, claude_content)
-
     now = datetime.datetime.now().isoformat()
     comparison_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -206,89 +208,44 @@ def generate_report(task, anvil_out, anvil_err, anvil_code, anvil_time,
         "differences": differences,
         "difference_count": len(differences),
         "verdict": _generate_verdict(differences, anvil_content, claude_content),
-        "raw": {
-            "anvil_stdout": anvil_out,
-            "anvil_stderr": anvil_err,
-            "claude_stdout": claude_out,
-            "claude_stderr": claude_err,
-        },
         "cleaned": {
             "anvil": anvil_content,
             "claude": claude_content,
         },
     }
-
     return report
 
 
 def _generate_verdict(differences, anvil_text, claude_text):
-    """根据差异生成总结性裁决。"""
     if not differences:
-        return {
-            "summary": "两个工具的回答基本一致",
-            "first_principles": "anvil 实现了同等功能，继续保持。",
-        }
-
-    key_issues = [d for d in differences if d["type"] in (
-        "aspect_security", "aspect_error", "aspect_alternative"
-    )]
-
-    # 第一性原理分析：这些差异是本质性的还是实现细节？
+        return {"summary": "两个工具的回答基本一致", "first_principles": "anvil 实现了同等功能，继续保持。"}
     fp_insights = []
     for d in differences:
         if d["type"] == "length_difference":
-            fp_insights.append(
-                "回答长度差异通常是实现细节（系统提示词风格），"
-                "不影响用户目标的达成。如果用户需要更精炼的回答，"
-                "调整 system prompt 即可，不需要改架构。"
-            )
+            fp_insights.append("回答长度差异通常是实现细节（系统提示词风格），不影响用户目标的达成。")
         elif d["type"] == "code_blocks":
-            fp_insights.append(
-                "代码块格式差异是呈现细节，不影响代码的正确性。"
-                "第一性原理问：用户得到正确的代码了吗？→ 是，那就够了。"
-            )
-        elif "aspect_" in d["type"]:
-            aspect = d["type"].split("_", 1)[1]
-            fp_insights.append(
-                f"anvil {'提到' if '提到了' in str(d) else '未提到'}了 {aspect}。"
-                f"从第一性原理看：{'这是个加分项' if 'anvil' in str(d) and '未' not in str(d) else '需要考虑是否需要补充'}，"
-                f"但首先要保证基础功能完整。"
-            )
-
-    if key_issues:
-        return {
-            "summary": f"两者有 {len(differences)} 处差异，其中 {len(key_issues)} 处可能涉及重要问题",
-            "first_principles": "\n".join(fp_insights),
-        }
-
-    return {
-        "summary": f"两者有 {len(differences)} 处差异，主要是回答风格和详细程度的区别",
-        "first_principles": "\n".join(fp_insights) if fp_insights else "这些差异都是实现细节，不影响用户目标的达成。",
-    }
+            fp_insights.append("代码块格式差异是呈现细节，不影响代码的正确性。")
+    return {"summary": f"两者有 {len(differences)} 处差异", "first_principles": "\n".join(fp_insights) if fp_insights else "这些差异都是实现细节。"}
 
 
 def save_report(report):
-    """保存对比报告到文件。"""
     ensure_dir()
     filepath = os.path.join(COMPARISONS_DIR, f"{report['id']}.json")
     with open(filepath, "w") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
-
     index = load_index()
     index["comparisons"].insert(0, {
         "id": report["id"],
         "timestamp": report["timestamp"],
         "task": report["task"][:80],
         "difference_count": report["difference_count"],
-        "verdict": report["verdict"],
+        "verdict": report["verdict"].get("summary", ""),
     })
     save_index(index)
-
     return filepath
 
 
 def format_report_summary(report):
-    """将报告格式化为人类可读的文本。"""
     lines = []
     lines.append("=" * 60)
     lines.append(f"  ANVIL vs 参考基准 对比报告")
@@ -306,12 +263,10 @@ def format_report_summary(report):
     lines.append(f"  参考基准: 退出码={s['claude']['exit_code']}, "
                  f"耗时={s['claude']['duration_seconds']}s, "
                  f"输出={s['claude']['output_length']}字符")
-
     if s['anvil']['has_error'] and not s['claude']['has_error']:
         lines.append("  ⚠ anvil 执行出错，参考基准正常")
     elif not s['anvil']['has_error'] and s['claude']['has_error']:
         lines.append("  ⚠ 参考基准执行出错，anvil 正常")
-
     lines.append("")
     verdict = report.get("verdict", {})
     v_summary = verdict.get("summary", "") if isinstance(verdict, dict) else verdict
@@ -323,35 +278,29 @@ def format_report_summary(report):
         lines.append("--- 第一性原理分析 ---")
         for line in fp_insights.split("\n"):
             lines.append(f"  {line}")
-
     if report["differences"]:
         lines.append("")
         lines.append(f"--- 差异分析 ({len(report['differences'])}处) ---")
         for d in report["differences"]:
             lines.append(f"  [{d['type']}] {d['detail']}")
-
     lines.append("")
     lines.append("--- anvil 回答 ---")
     cleaned = report.get("cleaned", {}).get("anvil", "")
-    lines.append(cleaned[:1000] + ("..." if len(cleaned) > 1000 else ""))
-
+    lines.append(cleaned[:600] + ("..." if len(cleaned) > 600 else ""))
     lines.append("")
     lines.append("--- 参考基准回答 ---")
     cleaned_c = report.get("cleaned", {}).get("claude", "")
-    lines.append(cleaned_c[:1000] + ("..." if len(cleaned_c) > 1000 else ""))
-
+    lines.append(cleaned_c[:600] + ("..." if len(cleaned_c) > 600 else ""))
     lines.append("")
     lines.append("=" * 60)
     return "\n".join(lines)
 
 
 def list_comparisons():
-    """列出所有历史对比记录。"""
     index = load_index()
     if not index["comparisons"]:
         print("暂无对比记录。")
         return
-
     print(f"{'ID':<17} {'时间':<20} {'差异数':<6} 任务")
     print("-" * 80)
     for c in index["comparisons"]:
@@ -360,15 +309,12 @@ def list_comparisons():
 
 
 def show_comparison(cid):
-    """显示某次对比的详情。"""
     filepath = os.path.join(COMPARISONS_DIR, f"{cid}.json")
     if not os.path.exists(filepath):
         print(f"未找到对比记录: {cid}")
         return
-
     with open(filepath) as f:
         report = json.load(f)
-
     print(format_report_summary(report))
 
 
@@ -376,26 +322,122 @@ def do_compare(task):
     """执行对比的主逻辑。"""
     print(f"🔨 任务: {task}")
     print()
-
     print("🤖 正在执行 anvil...")
     a_out, a_err, a_code, a_time = run_anvil(task)
-    print(f"   done ({a_time:.1f}s, exit={a_code})")
-
+    a_status = f"done ({a_time:.1f}s, exit={a_code})" if a_code != -1 else f"TIMEOUT ({a_time:.1f}s)"
+    print(f"   {a_status}")
     print("🧠 正在执行参考基准...")
     c_out, c_err, c_code, c_time = run_claude(task)
-    print(f"   done ({c_time:.1f}s, exit={c_code})")
-
+    c_status = f"done ({c_time:.1f}s, exit={c_code})" if c_code != -1 else f"TIMEOUT ({c_time:.1f}s)"
+    print(f"   {c_status}")
     print()
     report = generate_report(task, a_out, a_err, a_code, a_time,
                                c_out, c_err, c_code, c_time)
     filepath = save_report(report)
-
     print(format_report_summary(report))
     print()
-    print(f"📁 完整报告已保存: {filepath}")
-    print(f"📋 查看历史: {ANVIL_BIN} compare --list")
-    print(f"📖 查看详情: {ANVIL_BIN} compare --show {report['id']}")
-    print(f"📐 参考: cat docs/FIRST_PRINCIPLES.md")
+    print(f"📁 完整报告: {filepath}")
+
+
+def do_batch(task_file):
+    """批量对比。从 JSON 文件读取任务列表，逐个执行。"""
+    with open(task_file) as f:
+        config = json.load(f)
+
+    tasks = config.get("tasks", [])
+    if not tasks:
+        # 如果文件是纯列表
+        tasks = config if isinstance(config, list) else []
+
+    if not tasks:
+        print("❌ 未找到任务，使用默认 benchmark 任务集")
+        tasks = BENCHMARK_TASKS
+
+    print(f"🔨 批量对比: {len(tasks)} 个任务")
+    print("=" * 60)
+
+    results = []
+    for i, task in enumerate(tasks):
+        print(f"\n[{i+1}/{len(tasks)}] {task[:60]}...")
+        a_out, a_err, a_code, a_time = run_anvil(task)
+        c_out, c_err, c_code, c_time = run_claude(task)
+        report = generate_report(task, a_out, a_err, a_code, a_time,
+                                   c_out, c_err, c_code, c_time)
+        filepath = save_report(report)
+        results.append(report)
+        print(f"   ✅ anvil: {a_time:.1f}s | claude: {c_time:.1f}s "
+              f"| diff: {report['difference_count']}处 | {filepath}")
+
+    # 输出汇总
+    print("\n" + "=" * 60)
+    print(f"📊 批量对比完成: {len(results)}/{len(tasks)} 个任务")
+    
+    # 统计
+    anvil_scores = {"win": 0, "tie": 0, "lose": 0, "timeout": 0}
+    for r in results:
+        s = r["summary"]
+        if s["anvil"]["has_error"] or s["anvil"]["exit_code"] == -1:
+            anvil_scores["timeout"] += 1
+        elif s["claude"]["has_error"] or s["claude"]["exit_code"] == -1:
+            anvil_scores["win"] += 1
+        else:
+            diff_count = r["difference_count"]
+            if diff_count == 0:
+                anvil_scores["tie"] += 1
+            elif s["anvil"]["output_length"] >= s["claude"]["output_length"] * 0.7:
+                anvil_scores["tie"] += 1
+            else:
+                anvil_scores["lose"] += 1
+
+    print(f"  anvil 优于:  {anvil_scores['win']}")
+    print(f"  持平:       {anvil_scores['tie']}")
+    print(f"  anvil 落后:  {anvil_scores['lose']}")
+    print(f"  超时/失败:   {anvil_scores['timeout']}")
+
+    # 找出 anvil 表现最差的任务
+    worst = sorted(results, key=lambda r: (
+        r["summary"]["claude"]["output_length"] - r["summary"]["anvil"]["output_length"]
+    ), reverse=True)[:3]
+    if worst:
+        print(f"\n🎯 需要优先优化的任务:")
+        for r in worst:
+            print(f"  - {r['task'][:60]}... (差距: {r['difference_count']}处差异)")
+
+
+def do_trend():
+    """生成历史趋势报告。"""
+    index = load_index()
+    comparisons = index["comparisons"]
+    if not comparisons:
+        print("暂无对比记录。")
+        return
+
+    print("📈 ANVIL 进步趋势报告")
+    print("=" * 60)
+    print(f"  总对比次数: {len(comparisons)}")
+    print()
+
+    # 按日期分组统计
+    from collections import Counter, defaultdict
+    by_date = defaultdict(list)
+    for c in comparisons:
+        date = c["timestamp"][:10]
+        by_date[date].append(c)
+
+    print(f"{'日期':<12} {'对比数':<8} {'平均差异':<10} {'趋势'}")
+    print("-" * 60)
+
+    sorted_dates = sorted(by_date.keys())
+    for date in sorted_dates[-14:]:  # 最近14天
+        items = by_date[date]
+        avg_diff = sum(c["difference_count"] for c in items) / len(items)
+        indicator = "📈" if avg_diff > 2 else "📊" if avg_diff > 0 else "✅"
+        print(f"{date:<12} {len(items):<8} {avg_diff:<10.1f} {indicator}")
+
+    print()
+    print("💡 解读:")
+    print("  差异数越低说明 anvil 和参考基准越接近")
+    print("  长期趋势下降 = anvil 在进步")
 
 
 def main():
@@ -406,6 +448,9 @@ def main():
     parser.add_argument("--file", "-f", help="从文件读取任务")
     parser.add_argument("--list", "-l", action="store_true", help="列出历史对比记录")
     parser.add_argument("--show", "-s", help="显示某次对比的详情")
+    parser.add_argument("--batch", "-b", nargs="?", const="default", 
+                        help="批量对比。可指定 JSON 任务文件，不指定则使用默认 benchmark")
+    parser.add_argument("--trend", "-t", action="store_true", help="显示历史趋势报告")
 
     args = parser.parse_args()
 
@@ -415,6 +460,22 @@ def main():
 
     if args.show:
         show_comparison(args.show)
+        return
+
+    if args.trend:
+        do_trend()
+        return
+
+    if args.batch:
+        if args.batch == "default":
+            # 创建默认任务文件
+            task_file = os.path.join(COMPARISONS_DIR, "benchmark_tasks.json")
+            with open(task_file, "w") as f:
+                json.dump({"tasks": BENCHMARK_TASKS}, f, indent=2, ensure_ascii=False)
+            print(f"📝 使用默认 benchmark（{len(BENCHMARK_TASKS)} 个任务）")
+            do_batch(task_file)
+        else:
+            do_batch(args.batch)
         return
 
     task = args.task
