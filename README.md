@@ -26,24 +26,10 @@
 
 ---
 
-## 前世今生
+## 起源
 
-### 起源
-
-anvil 最初 fork 自 [claw-code](https://github.com/ultraworkers/claw-code)（Claude Code 的 Rust 开源实现），
-但经历了彻底的 rebrand 和重塑：
-
-| 阶段 | 变化 |
-|------|------|
-| **Fork** | 从 `claw-code` fork，初始专注于 DeepSeek 支持 |
-| **Rebrand** | 改名 `anvil`，配置目录从 `~/.claw/` 迁移到 `~/.anvil/` |
-| **去 CLAUD 化** | 所有 `CLAWD_*` 环境变量统一改为 `ANVIL_*` |
-| **身份独立** | system prompt 告诉模型自己是 Anvil，不是 Claude |
-| **第一性原理** | `FIRST_PRINCIPLES.md` 作为宪法，所有决策从基本真理推导 |
-| **对比系统** | `anvil compare` 内置对比框架，数据驱动迭代 |
-| **配置统一** | API key、base URL、搜索地址全部通过 `~/.anvil/settings.json` |
-
-### 核心设计文档
+anvil 最初 fork 自 claw-code（Claude Code 的 Rust 开源实现），
+但经历了彻底的 rebrand 和重塑。
 
 | 文件 | 用途 |
 |------|------|
