@@ -140,10 +140,10 @@ pub(crate) fn initialize_repo(cwd: &Path) -> Result<InitReport, Box<dyn std::err
         status: ensure_gitignore_entries(&gitignore)?,
     });
 
-    let anvil_md = cwd.join("CLAUDE.md");
+    let anvil_md = cwd.join("AGENTS.md");
     let content = render_init_project_config(cwd);
     artifacts.push(InitArtifact {
-        name: "CLAUDE.md",
+        name: "AGENTS.md",
         status: write_file_if_missing(&anvil_md, &content)?,
     });
 
@@ -204,7 +204,7 @@ fn ensure_gitignore_entries(path: &Path) -> Result<InitStatus, std::io::Error> {
 pub(crate) fn render_init_project_config(cwd: &Path) -> String {
     let detection = detect_repo(cwd);
     let mut lines = vec![
-        "# CLAUDE.md".to_string(),
+        "# AGENTS.md".to_string(),
         String::new(),
         "This file provides guidance to Anvil when working with code in this repository.".to_string(),
         String::new(),
@@ -252,7 +252,7 @@ pub(crate) fn render_init_project_config(cwd: &Path) -> String {
     lines.push("## Working agreement".to_string());
     lines.push("- Prefer small, reviewable changes and keep generated bootstrap files aligned with actual repo workflows.".to_string());
     lines.push("- Keep shared defaults in `.anvil.json`; reserve `.anvil/settings.local.json` for machine-local overrides.".to_string());
-    lines.push("- Do not overwrite existing `CLAUDE.md` content automatically; update it intentionally when repo workflows change.".to_string());
+    lines.push("- Do not overwrite existing `AGENTS.md` content automatically; update it intentionally when repo workflows change.".to_string());
     lines.push(String::new());
 
     lines.join("\n")
@@ -400,10 +400,10 @@ mod tests {
         assert!(rendered.contains(".anvil.json"));
         assert!(rendered.contains("created"));
         assert!(rendered.contains(".gitignore       created"));
-        assert!(rendered.contains("CLAUDE.md        created"));
+        assert!(rendered.contains("AGENTS.md        created"));
         assert!(root.join(".anvil").is_dir());
         assert!(root.join(".anvil.json").is_file());
-        assert!(root.join("CLAUDE.md").is_file());
+        assert!(root.join("AGENTS.md").is_file());
         assert_eq!(
             fs::read_to_string(root.join(".anvil.json")).expect("read claw json"),
             concat!(
@@ -418,7 +418,7 @@ mod tests {
         assert!(gitignore.contains(".anvil/settings.local.json"));
         assert!(gitignore.contains(".anvil/sessions/"));
         assert!(gitignore.contains(".anvilhip/"));
-        let anvil_md = fs::read_to_string(root.join("CLAUDE.md")).expect("read project config");
+        let anvil_md = fs::read_to_string(root.join("AGENTS.md")).expect("read project config");
         assert!(anvil_md.contains("Languages: Rust."));
         assert!(anvil_md.contains("cargo clippy --workspace --all-targets -- -D warnings"));
 
@@ -429,22 +429,22 @@ mod tests {
     fn initialize_repo_is_idempotent_and_preserves_existing_files() {
         let root = temp_dir();
         fs::create_dir_all(&root).expect("create root");
-        fs::write(root.join("CLAUDE.md"), "custom guidance\n").expect("write existing project config");
+        fs::write(root.join("AGENTS.md"), "custom guidance\n").expect("write existing project config");
         fs::write(root.join(".gitignore"), ".anvil/settings.local.json\n").expect("write gitignore");
 
         let first = initialize_repo(&root).expect("first init should succeed");
         assert!(first
             .render()
-            .contains("CLAUDE.md        skipped (already exists)"));
+            .contains("AGENTS.md        skipped (already exists)"));
         let second = initialize_repo(&root).expect("second init should succeed");
         let second_rendered = second.render();
         assert!(second_rendered.contains(".anvil/"));
         assert!(second_rendered.contains(".anvil.json"));
         assert!(second_rendered.contains("skipped (already exists)"));
         assert!(second_rendered.contains(".gitignore       skipped (already exists)"));
-        assert!(second_rendered.contains("CLAUDE.md        skipped (already exists)"));
+        assert!(second_rendered.contains("AGENTS.md        skipped (already exists)"));
         assert_eq!(
-            fs::read_to_string(root.join("CLAUDE.md")).expect("read existing project config"),
+            fs::read_to_string(root.join("AGENTS.md")).expect("read existing project config"),
             "custom guidance\n"
         );
         let gitignore = fs::read_to_string(root.join(".gitignore")).expect("read gitignore");
@@ -471,7 +471,7 @@ mod tests {
                 ".anvil/".to_string(),
                 ".anvil.json".to_string(),
                 ".gitignore".to_string(),
-                "CLAUDE.md".to_string(),
+                "AGENTS.md".to_string(),
             ],
             "fresh init should place all four artifacts in created[]"
         );
@@ -488,7 +488,7 @@ mod tests {
                 ".anvil/".to_string(),
                 ".anvil.json".to_string(),
                 ".gitignore".to_string(),
-                "CLAUDE.md".to_string(),
+                "AGENTS.md".to_string(),
             ],
             "idempotent init should place all four artifacts in skipped[]"
         );

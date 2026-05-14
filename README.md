@@ -37,7 +37,7 @@ anvil 深度集成 DeepSeek 模型。以下是对 DeepSeek V4 系列在编程领
 |------|------|---------|
 | **响应速度偏慢** | 相比其他模型，首 token 延迟较高 | 提供 lite (flash) 模型别名用于简单任务 |
 | **指令遵循偶有偏移** | 复杂多步指令有时会遗漏某些步骤 | system prompt 分步骤结构化，`anvil compare` 持续追踪 |
-| **非英文编程习惯偶有偏差** | 代码注释、变量命名等风格不够稳定 | 通过 CLAUDE.md / 项目指令文件约束风格 |
+| **非英文编程习惯偶有偏差** | 代码注释、变量命名等风格不够稳定 | 通过 AGENTS.md / 项目指令文件约束风格 |
 | **缺乏专有工具链集成** | 不像其他工具有原生 LSP/沙箱等 | 通过通用工具（bash/grep）替代，保持可移植性 |
 | **创意类代码质量一般** | 架构设计、命名创意不如顶尖模型 | 复杂设计建议结合 `anvil compare` 多方案对比 |
 
@@ -139,7 +139,7 @@ quit        # 退出（或 /exit）
 
 | 层 | 技术 |
 |----|------|
-| **二进制入口** | Rust (`rust/crates/rusty-claude-cli/src/main.rs`) |
+| **二进制入口** | Rust (`rust/crates/anvil-cli/src/main.rs`) |
 | **核心运行时** | Rust (`rust/crates/runtime/`) |
 | **API 客户端** | Rust (`rust/crates/api/`) — OpenAI 兼容协议 |
 | **工具系统** | Rust (`rust/crates/tools/`) |
@@ -154,7 +154,7 @@ quit        # 退出（或 /exit）
 rust/
 ├── Cargo.toml                  # workspace 根
 ├── crates/
-│   ├── rusty-claude-cli/       # 二进制入口（main.rs + CLI 解析）
+│   ├── anvil-cli/              # 二进制入口（main.rs + CLI 解析）
 │   ├── runtime/                # 对话运行时 + 配置加载 + system prompt
 │   ├── api/                    # API 客户端（OpenAI 兼容协议）
 │   ├── tools/                  # 内置工具实现（bash/read/write/grep/WebSearch）
