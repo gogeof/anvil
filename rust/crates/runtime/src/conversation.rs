@@ -715,11 +715,16 @@ where
 /// Reads the automatic compaction threshold from the environment.
 #[must_use]
 pub fn auto_compaction_threshold_from_env() -> u32 {
-    parse_auto_compaction_threshold(
-        std::env::var(AUTO_COMPACTION_THRESHOLD_ENV_VAR)
-            .ok()
-            .as_deref(),
-    )
+    // First check CLI --compact flag, then settings.json, then env var.
+    // The --compact flag is handled separately at the CLI layer.
+    // Here we read from env (which includes settings.json env injection).
+    let from_env = std::env::var(AUTO_COMPACTION_THRESHOLD_ENV_VAR)
+        .ok()
+        .as_deref()
+        .and_then(|raw| raw.trim().parse::<u32>().ok())
+        .filter(|threshold| *threshold > 0);
+    
+    from_env.unwrap_or(DEFAULT_AUTO_COMPACTION_INPUT_TOKENS_THRESHOLD)
 }
 
 #[must_use]
