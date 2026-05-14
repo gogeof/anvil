@@ -1818,7 +1818,7 @@ fn validate_model_syntax(model: &str) -> Result<(), String> {
     }
     // Known aliases are always valid
     match trimmed {
-                "pro" | "lite" | "deepseek-chat" | "deepseek-reasoner" => return Ok(()),
+                "pro" | "lite" | "glm" | "deepseek-chat" | "deepseek-reasoner" => return Ok(()),
         _ => {}
     }
     // Check for spaces (malformed)
