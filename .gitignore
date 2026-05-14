@@ -1,0 +1,11 @@
+.sandbox-home/
+.anvil-todos.json
+.anvil-agents/
+hello.py
+simple_function.py
+__pycache__/
+*.pyc
+.claw/sessions/
+.clawd-agents/
+.clawd-todos.json
+*.jsonl
