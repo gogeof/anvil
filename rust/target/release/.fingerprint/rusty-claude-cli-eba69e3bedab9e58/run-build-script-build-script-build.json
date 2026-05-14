@@ -1,0 +1,1 @@
+{"rustc":2179919275645516985,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[933909552457149575,"build_script_build",false,11207941584359105725]],"local":[{"RerunIfChanged":{"output":"release/build/rusty-claude-cli-eba69e3bedab9e58/output","paths":[".git/HEAD",".git/refs"]}}],"rustflags":[],"config":0,"compile_kind":0}

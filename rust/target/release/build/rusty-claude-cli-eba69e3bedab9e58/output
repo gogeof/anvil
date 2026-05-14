@@ -1,0 +1,5 @@
+cargo:rustc-env=GIT_SHA=895490d
+cargo:rustc-env=TARGET=aarch64-apple-darwin
+cargo:rustc-env=BUILD_DATE=2026-05-14
+cargo:rerun-if-changed=.git/HEAD
+cargo:rerun-if-changed=.git/refs
