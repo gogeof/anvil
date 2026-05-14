@@ -4569,7 +4569,7 @@ fn run_repl(
                 if trimmed.is_empty() {
                     continue;
                 }
-                if matches!(trimmed.as_str(), "/exit" | "/quit" | "quit") {
+                if matches!(trimmed.as_str(), "/exit" | "/quit" | "quit" | "exit") {
                     cli.persist_session()?;
                     break;
                 }
