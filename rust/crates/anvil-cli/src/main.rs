@@ -5633,6 +5633,10 @@ impl LiveCli {
         let empty = bar_width.saturating_sub(filled);
         let bar = format!("{}{}", "█".repeat(filled), "░".repeat(empty));
 
+        // Color logic: green < 60%, yellow 60-85%, red > 85%
+        let bar_color = if pct < 60 { "32" } else if pct < 85 { "33" } else { "31" };
+        let pct_color = if pct < 60 { "32" } else if pct < 85 { "33" } else { "31" };
+
         // Turns
         let turns = self.runtime.usage().turns();
 
@@ -5668,8 +5672,8 @@ impl LiveCli {
         let max_str = fmt_token_count(max_tokens);
 
         let inner = format!(
-            " ⚕ {} │ {} / {} │ [{}] {:2}% │ {} turns │ {} ",
-            model_name, used_str, max_str, bar, pct, turns, uptime_str,
+            " \x1b[36m⚕ {}\x1b[0m │ \x1b[33m{} / {}\x1b[0m │ \x1b[{}m[{}]\x1b[0m \x1b[{}m{:2}%\x1b[0m │ \x1b[35m{} turns\x1b[0m │ \x1b[90m{}\x1b[0m ",
+            model_name, used_str, max_str, bar_color, bar, pct_color, pct, turns, uptime_str,
         );
 
         let width = inner.chars().count();
