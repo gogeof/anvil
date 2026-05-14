@@ -47,7 +47,7 @@ const MAX_TOTAL_INSTRUCTION_CHARS: usize = 12_000;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ModelFamilyIdentity {
     #[default]
-    Claude,
+    Anvil,
     Generic,
 }
 
@@ -55,7 +55,7 @@ impl ModelFamilyIdentity {
     #[must_use]
     pub const fn family_label(self) -> &'static str {
         match self {
-            Self::Claude => FRONTIER_MODEL_NAME,
+            Self::Anvil => FRONTIER_MODEL_NAME,
             Self::Generic => "an AI assistant",
         }
     }
@@ -838,7 +838,7 @@ mod tests {
             "2026-03-31",
             "linux",
             "6.8",
-            ModelFamilyIdentity::Claude,
+            ModelFamilyIdentity::Anvil,
         )
         .expect("system prompt should load")
         .join(

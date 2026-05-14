@@ -365,7 +365,7 @@ pub fn detect_provider_kind(model: &str) -> ProviderKind {
 #[must_use]
 pub const fn model_family_identity_for_kind(kind: ProviderKind) -> runtime::ModelFamilyIdentity {
     match kind {
-        ProviderKind::Anthropic => runtime::ModelFamilyIdentity::Claude,
+        ProviderKind::Anthropic => runtime::ModelFamilyIdentity::Anvil,
         ProviderKind::DeepSeek
         | ProviderKind::Xai
         | ProviderKind::OpenAi
@@ -709,7 +709,7 @@ mod tests {
         let xai_identity = model_family_identity_for_kind(xai);
 
         // then: Anthropic stays Claude and OpenAI-compatible providers are generic
-        assert_eq!(anthropic_identity, runtime::ModelFamilyIdentity::Claude);
+        assert_eq!(anthropic_identity, runtime::ModelFamilyIdentity::Anvil);
         assert_eq!(openai_identity, runtime::ModelFamilyIdentity::Generic);
         assert_eq!(xai_identity, runtime::ModelFamilyIdentity::Generic);
     }
@@ -727,7 +727,7 @@ mod tests {
         let xai_identity = model_family_identity_for(xai_model);
 
         // then: Anthropic stays Claude and OpenAI-compatible providers are generic
-        assert_eq!(claude_identity, runtime::ModelFamilyIdentity::Claude);
+        assert_eq!(claude_identity, runtime::ModelFamilyIdentity::Anvil);
         assert_eq!(openai_identity, runtime::ModelFamilyIdentity::Generic);
         assert_eq!(xai_identity, runtime::ModelFamilyIdentity::Generic);
     }

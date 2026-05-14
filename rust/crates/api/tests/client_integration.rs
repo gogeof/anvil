@@ -60,7 +60,7 @@ async fn send_message_posts_json_and_parses_response() {
     assert_eq!(
         response.content,
         vec![OutputContentBlock::Text {
-            text: "Hello from Claude".to_string(),
+            text: "Hello from Anvil".to_string(),
         }]
     );
 

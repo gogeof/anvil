@@ -8209,12 +8209,12 @@ mod tests {
         fs::create_dir_all(&command_dir).expect("command dir should exist");
         fs::write(
             skill_dir.join("SKILL.md"),
-            "---\nname: statusline\ndescription: Claude config skill\n---\n# statusline\n",
+            "---\nname: statusline\ndescription: Config skill\n---\n# statusline\n",
         )
         .expect("direct skill file should exist");
         fs::write(
             command_dir.join("doctor-check.md"),
-            "---\nname: doctor-check\ndescription: Claude config command\n---\n# doctor-check\n",
+            "---\nname: doctor-check\ndescription: Config command\n---\n# doctor-check\n",
         )
         .expect("direct command file should exist");
 
@@ -8235,7 +8235,7 @@ mod tests {
             .as_str()
             .expect("path")
             .ends_with("skills/statusline/SKILL.md"));
-        assert_eq!(direct_skill_output["description"], "Claude config skill");
+        assert_eq!(direct_skill_output["description"], "Config skill");
 
         let legacy_command =
             execute_tool("Skill", &json!({ "skill": "doctor-check" })).expect("direct command");
@@ -8247,7 +8247,7 @@ mod tests {
             .ends_with("commands/doctor-check.md"));
         assert_eq!(
             legacy_command_output["description"],
-            "Claude config command"
+            "Config command"
         );
 
         match original_home {

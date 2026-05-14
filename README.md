@@ -56,7 +56,7 @@ anvil 深度集成 DeepSeek 模型。以下是对 DeepSeek V4 系列在编程领
 
 ## 起源
 
-anvil 最初 fork 自 claw-code（Claude Code 的 Rust 开源实现），
+anvil 最初 fork 自 claw-code（一个开源的 Rust 编程助手项目），
 但经历了彻底的 rebrand 和重塑。
 
 | 文件 | 用途 |
@@ -228,4 +228,4 @@ anvil compare "实现一个线程安全的计数器"
 
 本项目基于 [MIT License](LICENSE)。
 
-是基于 [claw-code](https://github.com/ultraworkers/claw-code) 的 fork，原始项目同样使用 MIT License。
+是基于 claw-code 的 fork。

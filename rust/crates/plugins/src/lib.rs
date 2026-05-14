@@ -2632,7 +2632,7 @@ mod tests {
             r#"{
   "name": "oh-my-claudecode",
   "version": "4.10.2",
-  "description": "Claude Code plugin manifest",
+  "description": "Plugin manifest",
   "hooks": {
     "SessionStart": ["scripts/session-start.mjs"]
   },
@@ -2644,13 +2644,13 @@ mod tests {
         );
 
         let error = load_plugin_from_directory(&root)
-            .expect_err("Claude Code plugin manifest should fail with guidance");
+            .expect_err("Plugin manifest should fail with guidance");
         let rendered = error.to_string();
-        assert!(rendered.contains("field `skills` uses the Claude Code plugin contract"));
-        assert!(rendered.contains("field `mcpServers` uses the Claude Code plugin contract"));
-        assert!(rendered.contains("field `agents` uses the Claude Code plugin contract"));
-        assert!(rendered.contains("field `commands` uses Claude Code-style directory globs"));
-        assert!(rendered.contains("hook `SessionStart` uses the Claude Code lifecycle contract"));
+        assert!(rendered.contains("field 'skills' uses an unsupported contract"));
+        assert!(rendered.contains("field 'mcpServers' is not supported by anvil"));
+        assert!(rendered.contains("field 'agents' is not supported by anvil"));
+        assert!(rendered.contains("field 'commands' uses directory glob patterns not supported"));
+        assert!(rendered.contains("hook 'SessionStart' is not supported"));
 
         let _ = fs::remove_dir_all(root);
     }
