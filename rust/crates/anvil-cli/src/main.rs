@@ -10043,11 +10043,11 @@ fn render_thinking_block_summary(
     redacted: bool,
 ) -> Result<(), RuntimeError> {
     let summary = if redacted {
-        "\n▶ Thinking block hidden by provider\n".to_string()
+        "\n\x1b[90m▶ Thinking block hidden by provider\x1b[0m\n".to_string()
     } else if let Some(char_count) = char_count {
-        format!("\n▶ Thinking ({char_count} chars hidden)\n")
+        format!("\n\x1b[90m▶ Thinking ({char_count} chars hidden)\x1b[0m\n")
     } else {
-        "\n▶ Thinking hidden\n".to_string()
+        "\n\x1b[90m▶ Thinking hidden\x1b[0m\n".to_string()
     };
     write!(out, "{summary}")
         .and_then(|()| out.flush())

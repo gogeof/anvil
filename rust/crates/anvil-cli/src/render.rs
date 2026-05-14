@@ -37,7 +37,7 @@ impl Default for ColorTheme {
             quote: Color::DarkGrey,
             table_border: Color::DarkCyan,
             code_block_border: Color::DarkGrey,
-            spinner_active: Color::Blue,
+            spinner_active: Color::DarkGrey,
             spinner_done: Color::Green,
             spinner_failed: Color::Red,
         }
