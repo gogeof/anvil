@@ -1199,6 +1199,21 @@ pub fn mvp_tool_specs() -> Vec<ToolSpec> {
             required_permission: PermissionMode::DangerFullAccess,
         },
     ]
+    .into_iter()
+    .filter(|spec| {
+        matches!(
+            spec.name,
+            "bash"
+                | "read_file"
+                | "write_file"
+                | "edit_file"
+                | "grep_search"
+                | "glob_search"
+                | "WebFetch"
+                | "WebSearch"
+        )
+    })
+    .collect()
 }
 
 /// Check permission before executing a tool. Returns Err with denial reason if blocked.
