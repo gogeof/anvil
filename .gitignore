@@ -9,3 +9,4 @@ __pycache__/
 .clawd-agents/
 .clawd-todos.json
 *.jsonl
+target/

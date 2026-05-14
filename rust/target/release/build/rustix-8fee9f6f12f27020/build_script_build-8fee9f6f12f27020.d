@@ -1,5 +1,0 @@
-/private/tmp/anvil-fresh/rust/target/release/build/rustix-8fee9f6f12f27020/build_script_build-8fee9f6f12f27020.d: /Users/limiancai/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustix-1.1.4/build.rs
-
-/private/tmp/anvil-fresh/rust/target/release/build/rustix-8fee9f6f12f27020/build_script_build-8fee9f6f12f27020: /Users/limiancai/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustix-1.1.4/build.rs
-
-/Users/limiancai/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustix-1.1.4/build.rs:
