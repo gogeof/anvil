@@ -5266,7 +5266,7 @@ impl LiveCli {
     }
 
     fn run_turn(&mut self, input: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let (mut runtime, hook_abort_monitor) = self.prepare_turn_runtime(true)?;
+        let (mut runtime, hook_abort_monitor) = self.prepare_turn_runtime(false)?;
         let mut stdout = io::stdout();
         // Static thinking indicator (no spinner animation)
         write!(stdout, "\x1b[2m\x1b[38;5;244m🔨 Thinking...\x1b[0m\n")?;
@@ -5281,6 +5281,21 @@ impl LiveCli {
                 write!(stdout, "\x1b[1A\x1b[2K\x1b[38;5;244m🔨 Done\x1b[0m\n")?;
                 stdout.flush()?;
                 println!();
+                // Show tool call summary (gray)
+                let tool_summary = self.tool_call_summary(&summary);
+                if !tool_summary.is_empty() {
+                    // Gray color for tool summary lines
+                    for line in tool_summary.lines() {
+                        writeln!(stdout, "\x1b[38;5;244m{line}\x1b[0m")?;
+                    }
+                    println!();
+                }
+                // Show final assistant text (colorful, no special wrapper)
+                let final_text = final_assistant_text(&summary);
+                if !final_text.is_empty() {
+                    println!("{final_text}");
+                    println!();
+                }
                 if let Some(event) = summary.auto_compaction {
                     println!(
                         "{}",
@@ -5297,6 +5312,63 @@ impl LiveCli {
                 Err(Box::new(error))
             }
         }
+    }
+
+    /// Extracts a human-readable summary of tool calls from a TurnSummary.
+    fn tool_call_summary(&self, summary: &runtime::TurnSummary) -> String {
+        let tool_uses = collect_tool_uses(summary);
+        let tool_results = collect_tool_results(summary);
+        if tool_uses.is_empty() {
+            return String::new();
+        }
+
+        let mut lines: Vec<String> = Vec::new();
+        lines.push("── Tools called ──".to_string());
+
+        // Build a map from tool_use_id to result
+        let mut result_map: std::collections::HashMap<String, &serde_json::Value> =
+            std::collections::HashMap::new();
+        for result in &tool_results {
+            if let Some(id) = result.get("tool_use_id").and_then(|v| v.as_str()) {
+                result_map.insert(id.to_string(), result);
+            }
+        }
+
+        for tool_use in &tool_uses {
+            let name = tool_use
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let id = tool_use
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+
+            let result_summary = result_map.get(id).map_or_else(
+                || "no result".to_string(),
+                |r| {
+                    let is_error = r.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let output = r
+                        .get("output")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    // Truncate long output for summary display
+                    let trimmed = if output.len() > 120 {
+                        format!("{}…", &output[..120])
+                    } else {
+                        output.to_string()
+                    };
+                    if is_error {
+                        format!("⚠️ ERROR: {trimmed}")
+                    } else {
+                        trimmed
+                    }
+                },
+            );
+            lines.push(format!("  · {name}: {result_summary}"));
+        }
+
+        lines.join("\n")
     }
 
     fn run_turn_with_output(
@@ -5321,6 +5393,14 @@ impl LiveCli {
         let summary = result?;
         self.replace_runtime(runtime)?;
         self.persist_session()?;
+        // Show tool call summary (gray) on stderr so it doesn't interfere with --compact stdout
+        let tool_summary = self.tool_call_summary(&summary);
+        if !tool_summary.is_empty() {
+            for line in tool_summary.lines() {
+                eprintln!("\x1b[38;5;244m{line}\x1b[0m");
+            }
+            eprintln!();
+        }
         let final_text = final_assistant_text(&summary);
         println!("{final_text}");
         Ok(())
