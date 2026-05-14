@@ -2331,12 +2331,19 @@ struct WebSearchInput {
 
 #[derive(Debug, Deserialize)]
 struct BrowserInput {
+    #[allow(dead_code)]
     action: BrowserAction,
+    #[allow(dead_code)]
     url: Option<String>,
+    #[allow(dead_code)]
     selector: Option<String>,
+    #[allow(dead_code)]
     text: Option<String>,
+    #[allow(dead_code)]
     script: Option<String>,
+    #[allow(dead_code)]
     timeout_ms: Option<u64>,
+    #[allow(dead_code)]
     wait_for: Option<String>,
 }
 
@@ -6346,6 +6353,7 @@ fn parse_skill_description(contents: &str) -> Option<String> {
 // ============================================================================
 
 /// Global browser session for reuse across tool invocations.
+#[cfg(feature = "chrome")]
 fn global_browser_session() -> &'static std::sync::Mutex<Option<BrowserSession>> {
     use std::sync::OnceLock;
     static SESSION: OnceLock<std::sync::Mutex<Option<BrowserSession>>> = OnceLock::new();
@@ -6353,6 +6361,7 @@ fn global_browser_session() -> &'static std::sync::Mutex<Option<BrowserSession>>
 }
 
 /// Browser session state holding the browser instance and current tab.
+#[cfg(feature = "chrome")]
 struct BrowserSession {
     #[cfg(feature = "chrome")]
     _browser: headless_chrome::Browser,
@@ -6621,6 +6630,7 @@ fn run_browser(input: BrowserInput) -> Result<String, String> {
 }
 
 /// Simple base64 encoding without external dependencies.
+#[cfg(feature = "chrome")]
 fn base64_encode(data: &[u8]) -> String {
     const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut result = String::new();

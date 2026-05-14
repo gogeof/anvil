@@ -406,14 +406,7 @@ pub fn model_token_limit(model: &str) -> Option<ModelTokenLimit> {
     let canonical = resolve_model_alias(model);
     let base_model = canonical.rsplit('/').next().unwrap_or(canonical.as_str());
     match base_model {
-        "deepseek-v4-pro" => Some(ModelTokenLimit {
-            max_output_tokens: 32_000,
-            context_window_tokens: 200_000,
-        }),
-        "deepseek-v4-pro" | "deepseek-v4-flash" => Some(ModelTokenLimit {
-            max_output_tokens: 64_000,
-            context_window_tokens: 200_000,
-        }),
+        // Grok models (xAI)
         "grok-3" | "grok-3-mini" => Some(ModelTokenLimit {
             max_output_tokens: 64_000,
             context_window_tokens: 131_072,

@@ -727,7 +727,10 @@ pub fn auto_compaction_threshold_from_env() -> u32 {
     from_env.unwrap_or(DEFAULT_AUTO_COMPACTION_INPUT_TOKENS_THRESHOLD)
 }
 
+/// Parse auto-compaction threshold from configuration string.
+/// Returns the default if the value is `None`, zero, or unparseable.
 #[must_use]
+#[cfg(test)]
 fn parse_auto_compaction_threshold(value: Option<&str>) -> u32 {
     value
         .and_then(|raw| raw.trim().parse::<u32>().ok())
