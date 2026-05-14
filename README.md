@@ -87,17 +87,21 @@ sudo codesign --force --sign - /usr/local/bin/anvil
 ```json
 {
   "aliases": {
-    "lite": "deepseek-v4-flash",
-    "pro": "deepseek-v4-pro"
+    "lite": "deepseek/deepseek-v4-flash",
+    "pro": "deepseek/deepseek-v4-pro",
+    "glm": "glm-5"
   },
   "permissions": {
     "defaultMode": "dontAsk"
   },
   "env": {
-    "DEEPSEEK_API_KEY": "sk-your-key",
-    "DEEPSEEK_BASE_URL": "https://your-provider.com/v1",
-    "ANVIL_WEB_SEARCH_BASE_URL": "https://cn.bing.com/search"
-  }
+    "DEEPSEEK_API_KEY": "sk-your-deepseek-key",
+    "DEEPSEEK_BASE_URL": "https://your-deepseek-provider.com/v1",
+    "ANTHROPIC_AUTH_TOKEN": "your-anthropic-compat-token",
+    "ANTHROPIC_BASE_URL": "https://your-anthropic-provider.com/anthropic",
+    "ANVIL_WEB_SEARCH_BASE_URL": "http://localhost:4000/search?format=json"
+  },
+  "toolModel": "glm-5"
 }
 ```
 
@@ -113,8 +117,20 @@ anvil
 anvil prompt "分析这个项目的架构"
 
 # 用指定模型
-anvil --model lite       # 快速响应（flash 模型）
-anvil --model pro        # 深度推理（pro 模型）
+anvil --model lite       # 华为 DeepSeek（快速响应）
+anvil --model pro        # 华为 DeepSeek（深度推理）
+anvil --model glm        # 百度千帆 glm-5（轻量任务/工具调用）
+
+# 双供应商配置
+# 在 settings.json 的 env 中同时配置两个 provider 的密钥：
+#   DEEPSEEK_API_KEY + DEEPSEEK_BASE_URL → 华为/官方 DeepSeek
+#   ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL → 百度千帆等 Anthropic 兼容端点
+# settings.json 中的 toolModel 字段指向工具调用模型（默认 glm-5）
+
+# 网页检索（需自部署 SearXNG）
+# 1. docker run -d --name searxng -p 4000:8080 searxng/searxng
+# 2. 在 env 中设 ANVIL_WEB_SEARCH_BASE_URL=http://localhost:4000/search?format=json
+# anvil 会自动走 JSON API 获取结构化搜索结果
 
 # 对比 anvil 与参考基准
 anvil compare "实现一个 LRU 缓存"
@@ -209,6 +225,7 @@ anvil compare "实现一个线程安全的计数器"
 | `permissions.allow` | string[] | 允许的工具 |
 | `permissions.deny` | string[] | 禁止的工具 |
 | `env` | object | 注入到进程环境变量的键值对 |
+| `toolModel` | string | 工具调用模型（如 `"glm-5"`），双供应商模式下使用 |
 | `hooks` | object | 钩子配置 |
 | `mcpServers` | object | MCP 服务器配置 |
 
@@ -216,11 +233,13 @@ anvil compare "实现一个线程安全的计数器"
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `DEEPSEEK_API_KEY` | — | DeepSeek API 密钥 |
+| `DEEPSEEK_API_KEY` | — | DeepSeek API 密钥（用于华为/官方等 OpenAI 兼容端点） |
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | DeepSeek API 端点 |
+| `ANTHROPIC_AUTH_TOKEN` | — | Anthropic 兼容 API 密钥（用于百度千帆等） |
+| `ANTHROPIC_BASE_URL` | — | Anthropic 兼容 API 端点 |
 | `OPENROUTER_API_KEY` | — | OpenRouter API 密钥 |
 | `TOGETHER_API_KEY` | — | Together AI API 密钥 |
-| `ANVIL_WEB_SEARCH_BASE_URL` | DuckDuckGo | 搜索引擎地址 |
+| `ANVIL_WEB_SEARCH_BASE_URL` | DuckDuckGo | 搜索引擎地址（国内推荐 `http://localhost:4000/search?format=json` 自部署 SearXNG）|
 
 ---
 
