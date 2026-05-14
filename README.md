@@ -182,20 +182,22 @@ rust/
 
 ---
 
-## 内置工具
+## 内置工具（8 个核心工具）
 
-| 工具 | 用途 | 权限 |
-|------|------|------|
-| `bash` | 执行 shell 命令 | DangerFullAccess |
-| `read_file` | 读取文件 | ReadOnly |
-| `write_file` | 写入文件 | WorkspaceWrite |
-| `edit_file` | patch 式编辑 | WorkspaceWrite |
-| `grep_search` | 正则搜索文件内容 | ReadOnly |
-| `glob_search` | 按文件名模式查找 | ReadOnly |
-| `WebFetch` | 抓取 URL 内容 | ReadOnly |
-| `WebSearch` | 搜索引擎搜索 | ReadOnly |
+从第一性原理出发，编程只需要四个基本能力：读、写、执行、搜索。anvil 围绕这四个能力设计最小的工具集：
 
----
+| 工具 | 用途 | 对应基本能力 | 权限 |
+|------|------|------------|------|
+| `bash` | 执行 shell 命令 | 执行 | DangerFullAccess |
+| `read_file` | 读取文件内容 | 读 | ReadOnly |
+| `write_file` | 写入或创建文件 | 写 | WorkspaceWrite |
+| `edit_file` | patch 式编辑已有文件 | 写 | WorkspaceWrite |
+| `grep_search` | 正则搜索文件内容 | 搜索 | ReadOnly |
+| `glob_search` | 按文件名模式查找 | 搜索 | ReadOnly |
+| `WebFetch` | 抓取 URL 内容 | 搜索 | ReadOnly |
+| `WebSearch` | 通过搜索引擎查询 | 搜索 | ReadOnly |
+
+> 工具数量不在多，在于覆盖编程的核心需求。所有工具都秉持最少权限原则。
 
 ## 对比系统
 
