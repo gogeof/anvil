@@ -3517,7 +3517,7 @@ mod tests {
     }
 
     /// Regression test for ROADMAP #41: verify that `ANVIL_CONFIG_HOME` isolation prevents
-    /// host `~/.claw/plugins/` from bleeding into test runs.
+    /// host `~/.anvil/plugins/` from bleeding into test runs.
     #[test]
     fn claw_config_home_isolation_prevents_host_plugin_leakage() {
         let _guard = env_guard();
@@ -3541,7 +3541,7 @@ mod tests {
 }"#,
         );
 
-        // Create PluginManager with isolated bundled_root - it should use the temp config_home, not host ~/.claw/
+        // Create PluginManager with isolated bundled_root - it should use the temp config_home, not host ~/.anvil/
         let mut config = PluginManagerConfig::new(&config_home);
         config.bundled_root = Some(bundled_root.clone());
         let manager = PluginManager::new(config);
@@ -3555,7 +3555,7 @@ mod tests {
         assert_eq!(
             installed.len(),
             1,
-            "should only see the test fixture plugin, not host ~/.claw/plugins/"
+            "should only see the test fixture plugin, not host ~/.anvil/plugins/"
         );
         assert_eq!(
             installed[0].metadata.id, "isolated-test-plugin@external",

@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Default directory for claw-managed worktrees.
-const CLAW_WORKTREE_DIR: &str = ".claw/worktrees";
+const CLAW_WORKTREE_DIR: &str = ".anvil/worktrees";
 
 /// Errors that can occur when working with git worktrees.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,7 +134,7 @@ pub fn get_git_root(cwd: &Path) -> Option<PathBuf> {
 
 /// Get the expected path for a named worktree.
 ///
-/// The path is `<git_root>/.claw/worktrees/<name>`.
+/// The path is `<git_root>/.anvil/worktrees/<name>`.
 #[must_use]
 pub fn worktree_path(git_root: &Path, name: &str) -> PathBuf {
     git_root.join(CLAW_WORKTREE_DIR).join(name)
@@ -174,7 +174,7 @@ pub fn list_worktrees(git_root: &Path) -> Result<Vec<String>, WorktreeError> {
     Ok(result)
 }
 
-/// Create a new git worktree at `.claw/worktrees/<name>`.
+/// Create a new git worktree at `.anvil/worktrees/<name>`.
 ///
 /// If the worktree already exists, returns `WorktreeError::WorktreeAlreadyExists`.
 ///
@@ -470,7 +470,7 @@ mod tests {
     fn worktree_path_joins_correctly() {
         let git_root = PathBuf::from("/repo");
         let result = worktree_path(&git_root, "my-worktree");
-        assert_eq!(result, PathBuf::from("/repo/.claw/worktrees/my-worktree"));
+        assert_eq!(result, PathBuf::from("/repo/.anvil/worktrees/my-worktree"));
     }
 
     #[test]

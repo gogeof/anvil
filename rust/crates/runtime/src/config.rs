@@ -571,7 +571,7 @@ impl RuntimePluginConfig {
 pub fn default_config_home() -> PathBuf {
     std::env::var_os("ANVIL_CONFIG_HOME")
         .map(PathBuf::from)
-        .or_else(|| std::env::var_os("CLAW_CONFIG_HOME").map(PathBuf::from))
+        .or_else(|| std::env::var_os("ANVIL_CONFIG_HOME").map(PathBuf::from))
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".anvil")))
         .unwrap_or_else(|| PathBuf::from(".anvil"))
 }
