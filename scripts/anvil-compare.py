@@ -28,7 +28,7 @@ COMPARISONS_DIR = os.path.expanduser("~/.anvil/comparisons")
 INDEX_FILE = os.path.join(COMPARISONS_DIR, "index.json")
 ANVIL_BIN = "/usr/local/bin/anvil"
 REFERENCE_BIN = os.path.expanduser("~/.local/bin/claude")
-DEFAULT_TIMEOUT = 120
+DEFAULT_TIMEOUT = 600
 
 # ====== 预设任务集 ======
 
@@ -114,7 +114,7 @@ def run_anvil(task, timeout=DEFAULT_TIMEOUT):
 
 
 def run_reference(task, timeout=DEFAULT_TIMEOUT):
-    """Run Claude Code CLI on the task."""
+    """Run reference tool on the task."""
     env = os.environ.copy()
     return run_cmd(
         [REFERENCE_BIN, "-p", task, "--output-format", "text"],
