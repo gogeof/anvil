@@ -4561,6 +4561,7 @@ fn run_repl(
     println!("{}", format_connected_line(&cli.model));
 
     loop {
+        println!("{}", cli.format_status_header());
         editor.set_completions(cli.repl_completion_candidates().unwrap_or_default());
         match editor.read_line()? {
             input::ReadOutcome::Submit(input) => {
@@ -5608,6 +5609,75 @@ impl LiveCli {
     fn persist_session(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.runtime.session().save_to_path(&self.session.path)?;
         Ok(())
+    }
+
+    fn format_status_header(&self) -> String {
+        let model_name = &self.model;
+        let used_tokens = self.runtime.estimated_tokens();
+        let max_tokens = model_token_limit(model_name)
+            .map(|limit| limit.context_window_tokens as usize)
+            .unwrap_or(0);
+        let pct = if max_tokens > 0 {
+            (used_tokens as u64 * 100) / max_tokens as u64
+        } else {
+            0
+        };
+
+        // Build the progress bar (10 chars wide)
+        let bar_width: usize = 10;
+        let filled = if max_tokens > 0 {
+            ((used_tokens as u64) * (bar_width as u64) / max_tokens as u64).min(bar_width as u64) as usize
+        } else {
+            0
+        };
+        let empty = bar_width.saturating_sub(filled);
+        let bar = format!("{}{}", "█".repeat(filled), "░".repeat(empty));
+
+        // Turns
+        let turns = self.runtime.usage().turns();
+
+        // Session uptime
+        let start_ms = self.runtime.session().created_at_ms;
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        let elapsed_ms = now_ms.saturating_sub(start_ms);
+        let total_secs = elapsed_ms / 1000;
+        let minutes = total_secs / 60;
+        let seconds = total_secs % 60;
+        let uptime_str = if minutes > 0 {
+            format!("{}m {:02}s", minutes, seconds)
+        } else {
+            format!("{}s", seconds)
+        };
+
+        // Token display: shorten large numbers (e.g., 318K, 1M)
+        fn fmt_token_count(n: usize) -> String {
+            if n >= 1_000_000 {
+                format!("{:.1}M", n as f64 / 1_000_000.0)
+            } else if n >= 1_000 {
+                format!("{}K", n / 1000)
+            } else {
+                n.to_string()
+            }
+        }
+
+        let used_str = fmt_token_count(used_tokens);
+        let max_str = fmt_token_count(max_tokens);
+
+        let inner = format!(
+            " ⚕ {} │ {} / {} │ [{}] {:2}% │ {} turns │ {} ",
+            model_name, used_str, max_str, bar, pct, turns, uptime_str,
+        );
+
+        let width = inner.chars().count();
+        let border = "─".repeat(width);
+
+        format!(
+            "╭─{border}─╮\n│{inner}│\n╰─{border}─╯"
+        )
     }
 
     fn print_status(&self) {
