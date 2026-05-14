@@ -1,8 +1,8 @@
 # ANVIL
 
-> **从第一性原理出发的 AI 编程助手。**
-> 不绑定任何模型供应商，所有配置统一在 `~/.anvil/` 下，
-> 通过 `anvil compare` 用数据驱动持续迭代。
+> **深度集成 DeepSeek 的 AI 编程助手。**
+> 学习 Claude Code 等优秀工具的设计理念，
+> 做对用户有价值、真正好用的终端 CLI 工具。
 
 <p align="center">
   <pre><code> █████╗ ███╗   ██╗██╗   ██╗██╗██╗     
@@ -15,14 +15,42 @@
 
 ---
 
+## DeepSeek 模型在编程中的评估
+
+anvil 深度集成 DeepSeek 模型。以下是对 DeepSeek V4 系列在编程领域的诚实评估。
+
+### 优势（anvil 重点集成方向）
+
+| 优势 | 说明 | 在 anvil 中的集成 |
+|------|------|------------------|
+| **长上下文** | V4-Pro 支持 1M token 上下文，能完整处理大型代码库 | system prompt 充分利用上下文预算 |
+| **推理能力强** | DeepSeek 的 CoT（思维链）推理在复杂编程任务上表现出色 | 已启用 extended thinking 模式 |
+| **代理能力强** | DeepSeek V4 系列在工具调用和任务规划上表现优异，适合 coding agent 场景 | 完整工具链集成（bash/文件/搜索） |
+| **中文理解好** | 中文编程需求的理解远超同类模型 | 系统提示词中英双语优化 |
+| **性价比高** | 1M token 上下文下仍保持有竞争力的价格 | 成本控制机制 |
+| **多供应商可选** | 可通过官方、华为云、OpenRouter、Together 等多渠道访问 | `DEEPSEEK_BASE_URL` 可配置 |
+| **代码补全/分析** | 对已有代码的理解和修改建议质量高 | read_file + edit_file 工具流优化 |
+
+### 劣势（诚实面对，持续改进）
+
+| 劣势 | 说明 | 缓解措施 |
+|------|------|---------|
+| **响应速度偏慢** | 相比 Claude Sonnet 等模型，首 token 延迟较高 | 提供 lite (flash) 模型别名用于简单任务 |
+| **指令遵循偶有偏移** | 复杂多步指令有时会遗漏某些步骤 | system prompt 分步骤结构化，`anvil compare` 持续追踪 |
+| **非英文编程习惯偶有偏差** | 代码注释、变量命名等风格不够稳定 | 通过 CLAUDE.md / 项目指令文件约束风格 |
+| **缺乏专有工具链集成** | 不像 Claude Code 有原生 LSP/沙箱等 | 通过通用工具（bash/grep）替代，保持可移植性 |
+| **创意类代码质量一般** | 架构设计、命名创意不如顶尖模型 | 复杂设计建议结合 `anvil compare` 多方案对比 |
+
+---
+
 ## 一句话
 
-**anvil** 是一个终端 AI 编程助手，像 Claude Code 一样工作在命令行 REPL 中，
-但从第一性原理重新设计：
-- **模型自由** — 支持任何 OpenAI 兼容 API（DeepSeek、OpenRouter、Together 等）
-- **配置统一** — 全部在 `~/.anvil/settings.json`，不依赖 shell profile
-- **持续迭代** — 内置 `anvil compare`，和参考基准工具对比，量化进步
-- **供应商中立** — 不锁定在 Anthropic/OpenAI 任何一家
+**anvil** 是一个终端 AI 编程助手，深度集成 DeepSeek 模型：
+
+- **长上下文编程** — 充分利用 DeepSeek V4 的 1M token 上下文处理大型项目
+- **推理驱动** — 启用 CoT 推理模式处理复杂编程任务
+- **工具调用优化** — 针对 DeepSeek 的工具调用习惯调优 system prompt
+- **持续对比改进** — 内置 `anvil compare`，对比参考基准，数据驱动优化
 
 ---
 
@@ -82,11 +110,11 @@ sudo codesign --force --sign - /usr/local/bin/anvil
 anvil
 
 # 单次 prompt
-anvil prompt "写一个快速排序"
+anvil prompt "分析这个项目的架构"
 
 # 用指定模型
-anvil --model lite
-anvil --model pro
+anvil --model lite       # 快速响应（flash 模型）
+anvil --model pro        # 深度推理（pro 模型）
 
 # 对比 anvil 与参考基准
 anvil compare "实现一个 LRU 缓存"
@@ -94,9 +122,6 @@ anvil compare "实现一个 LRU 缓存"
 # 查看对比历史
 anvil compare --list
 anvil compare --show 20260514_164435
-
-# 查看配置
-anvil config
 
 # REPL 内命令
 /status     # 当前上下文
@@ -123,7 +148,7 @@ quit        # 退出（或 /exit）
 | **REPL** | Rust (rustyline) |
 | **构建** | Cargo workspace (`rust/Cargo.toml`) |
 
-###  Workspace 结构
+### Workspace 结构
 
 ```
 rust/
@@ -139,37 +164,6 @@ rust/
 │   └── compat-harness/         # 兼容性测试框架
 ```
 
-### 数据流
-
-```
-用户输入
-  ↓
-REPL (rustyline)
-  ↓
-CLI 解析 → CliAction::Prompt / Repl / Compare / ...
-  ↓
-运行时 (ConversationRuntime)
-  ├── System Prompt 构建器
-  ├── API 客户端 → 供应商 API (OpenAI 兼容)
-  ├── 工具调度器 → bash / 文件 / 搜索 / Web
-  └── 配置加载器 → ~/.anvil/settings.json
-```
-
----
-
-## 第一性原理（摘要）
-
-anvil 的每个设计都从四个不可再分的基本真理推导：
-
-| 基本真理 | 推导出的实现 |
-|----------|------------|
-| 编程 = 读、写、执行、搜索 | `read_file`, `write_file`, `edit_file`, `bash`, `WebSearch` |
-| AI 模型只是引擎 | OpenAI 兼容协议 + 可配置的 provider/endpoint |
-| 配置属于用户 | `~/.anvil/settings.json`，不依赖 shell 或外部文件 |
-| 进步需要度量 | `anvil compare` 内置对比框架 |
-
-完整内容见 [`FIRST_PRINCIPLES.md`](./FIRST_PRINCIPLES.md)。
-
 ---
 
 ## 内置工具
@@ -184,8 +178,23 @@ anvil 的每个设计都从四个不可再分的基本真理推导：
 | `glob_search` | 按文件名模式查找 | ReadOnly |
 | `WebFetch` | 抓取 URL 内容 | ReadOnly |
 | `WebSearch` | 搜索引擎搜索 | ReadOnly |
-| `TodoWrite` | 会话任务管理 | WorkspaceWrite |
-| `Config` | 查看配置 | ReadOnly |
+
+---
+
+## 对比系统
+
+`anvil compare` 通过和参考基准工具对比，持续驱动改进：
+
+```
+anvil compare "实现一个线程安全的计数器"
+```
+
+流程：
+1. 同时发给 anvil 和参考基准工具执行
+2. 自动提取核心回答内容（去除 spinner、工具调用等元信息）
+3. 分析差异：回答长度、代码块、关键话题覆盖
+4. 从第一性原理判断：差异是本质性的还是实现细节
+5. 报告保存到 `~/.anvil/comparisons/`
 
 ---
 
@@ -211,60 +220,7 @@ anvil 的每个设计都从四个不可再分的基本真理推导：
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | DeepSeek API 端点 |
 | `OPENROUTER_API_KEY` | — | OpenRouter API 密钥 |
 | `TOGETHER_API_KEY` | — | Together AI API 密钥 |
-| `ANVIL_WEB_SEARCH_BASE_URL` | DuckDuckGo | 搜索引擎地址（国内推荐 `cn.bing.com`） |
-
----
-
-## 对比系统
-
-`anvil compare` 从第一性原理出发度量进步：
-
-```
-anvil compare "实现一个线程安全的计数器"
-```
-
-流程：
-1. 同时发给 anvil 和参考基准工具执行
-2. 自动提取核心回答内容（去除 spinner、工具调用等元信息）
-3. 分析差异：回答长度、代码块、关键话题覆盖
-4. 从第一性原理判断：差异是本质性的还是实现细节
-5. 报告保存到 `~/.anvil/comparisons/`
-
----
-
-## 更新方向
-
-基于第一性原理决策树的未来路线：
-
-### 短期（数据驱动）
-
-- [ ] **优化 system prompt** — 让 anvil 对简单任务回答更精炼（对比数据显示当前回答偏长）
-- [ ] **减少工具调用开销** — 简单问答场景不该触发文件写入和 bash 执行
-- [ ] **更多 provider 支持** — 通过 `~/.anvil/settings.json` 配置更多供应商
-
-### 中期（能力增强）
-
-- [ ] **会话管理优化** — session 生命周期管理
-- [ ] **MCP 工具生态** — 通过 MCP 协议接入更多工具
-- [ ] **对比自动化** — 定期批量对比生成趋势报告
-
-### 长期（由用户需求驱动）
-
-> 不做 roadmap。方向由 `anvil compare` 的数据和用户反馈决定。
-> 如果有新工具出现比参考基准更好，anvil 就和更好的工具比。
-
----
-
-## 与参考基准工具的关系
-
-anvil 不和任何特定工具对标。
-
-参考基准工具的定位是 **度量尺**：
-- 告诉我们"当前最好的体验能做到什么程度"
-- 帮助我们找到差距
-- 但不意味着 anvil 要用同样的方式去填补差距
-
-anvil 的方式始终是：**从最根本的需求出发，走最直接的路径**。
+| `ANVIL_WEB_SEARCH_BASE_URL` | DuckDuckGo | 搜索引擎地址 |
 
 ---
 
