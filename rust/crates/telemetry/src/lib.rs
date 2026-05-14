@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 pub const DEFAULT_ANTHROPIC_VERSION: &str = "2023-06-01";
-pub const DEFAULT_APP_NAME: &str = "claude-code";
+pub const DEFAULT_APP_NAME: &str = "anvil";
 pub const DEFAULT_RUNTIME: &str = "rust";
-pub const DEFAULT_AGENTIC_BETA: &str = "claude-code-20250219";
+pub const DEFAULT_AGENTIC_BETA: &str = "anvil-agentic-20250219";
 pub const DEFAULT_PROMPT_CACHING_SCOPE_BETA: &str = "prompt-caching-scope-2026-01-05";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -51,7 +51,7 @@ impl Default for ClientIdentity {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct AnthropicRequestProfile {
+pub struct APIRequestProfile {
     pub anthropic_version: String,
     pub client_identity: ClientIdentity,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -60,7 +60,7 @@ pub struct AnthropicRequestProfile {
     pub extra_body: Map<String, Value>,
 }
 
-impl AnthropicRequestProfile {
+impl APIRequestProfile {
     #[must_use]
     pub fn new(client_identity: ClientIdentity) -> Self {
         Self {
@@ -125,7 +125,7 @@ impl AnthropicRequestProfile {
     }
 }
 
-impl Default for AnthropicRequestProfile {
+impl Default for APIRequestProfile {
     fn default() -> Self {
         Self::new(ClientIdentity::default())
     }
@@ -433,8 +433,8 @@ mod tests {
 
     #[test]
     fn request_profile_emits_headers_and_merges_body() {
-        let profile = AnthropicRequestProfile::new(
-            ClientIdentity::new("claude-code", "1.2.3").with_runtime("rust-cli"),
+        let profile = APIRequestProfile::new(
+            ClientIdentity::new("anvil", "1.2.3").with_runtime("rust-cli"),
         )
         .with_beta("tools-2026-04-01")
         .with_extra_body("metadata", serde_json::json!({"source": "test"}));
@@ -446,17 +446,17 @@ mod tests {
                     "anthropic-version".to_string(),
                     DEFAULT_ANTHROPIC_VERSION.to_string()
                 ),
-                ("user-agent".to_string(), "claude-code/1.2.3".to_string()),
+                ("user-agent".to_string(), "anvil/1.2.3".to_string()),
                 (
                     "anthropic-beta".to_string(),
-                    "claude-code-20250219,prompt-caching-scope-2026-01-05,tools-2026-04-01"
+                    "anvil-20250219,prompt-caching-scope-2026-01-05,tools-2026-04-01"
                         .to_string(),
                 ),
             ]
         );
 
         let body = profile
-            .render_json_body(&serde_json::json!({"model": "claude-sonnet"}))
+            .render_json_body(&serde_json::json!({"model": "deepseek-pro"}))
             .expect("body should serialize");
         assert_eq!(
             body["metadata"]["source"],
@@ -465,7 +465,7 @@ mod tests {
         assert_eq!(
             body["betas"],
             serde_json::json!([
-                "claude-code-20250219",
+                "anvil-agentic-20250219",
                 "prompt-caching-scope-2026-01-05",
                 "tools-2026-04-01"
             ])
@@ -480,7 +480,7 @@ mod tests {
         tracer.record_http_request_started(1, "POST", "/v1/messages", Map::new());
         tracer.record_analytics(
             AnalyticsEvent::new("cli", "prompt_sent")
-                .with_property("model", Value::String("claude-opus".to_string())),
+                .with_property("model", Value::String("deepseek-pro".to_string())),
         );
 
         let events = sink.events();

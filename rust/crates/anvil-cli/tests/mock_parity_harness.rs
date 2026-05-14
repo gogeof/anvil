@@ -7,7 +7,7 @@ use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use mock_anthropic_service::{MockAnthropicService, SCENARIO_PREFIX};
+use mock_anthropic_service::{MockAPIService, SCENARIO_PREFIX};
 use serde_json::{json, Value};
 
 static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -23,7 +23,7 @@ fn clean_env_cli_reaches_mock_anthropic_service_across_scripted_parity_scenarios
         .collect::<BTreeMap<_, _>>();
     let runtime = tokio::runtime::Runtime::new().expect("tokio runtime should build");
     let server = runtime
-        .block_on(MockAnthropicService::spawn())
+        .block_on(MockAPIService::spawn())
         .expect("mock service should start");
     let base_url = server.base_url();
 
@@ -416,7 +416,7 @@ fn prepare_plugin_fixture(workspace: &HarnessWorkspace) {
         .join("external-plugins")
         .join("parity-plugin");
     let tool_dir = plugin_root.join("tools");
-    let manifest_dir = plugin_root.join(".claude-plugin");
+    let manifest_dir = plugin_root.join(".anvil-plugin");
     fs::create_dir_all(&tool_dir).expect("plugin tools dir");
     fs::create_dir_all(&manifest_dir).expect("plugin manifest dir");
 

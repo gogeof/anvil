@@ -3414,21 +3414,21 @@ fn skill_lookup_roots() -> Vec<SkillLookupRoot> {
     if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
         push_home_skill_lookup_roots(&mut roots, std::path::Path::new(&home));
     }
-    if let Ok(claude_config_dir) = std::env::var("CLAUDE_CONFIG_DIR") {
-        let claude_config_dir = std::path::PathBuf::from(claude_config_dir);
+    if let Ok(anvil_config_dir) = std::env::var("ANVIL_CONFIG_DIR") {
+        let anvil_config_dir = std::path::PathBuf::from(anvil_config_dir);
         push_skill_lookup_root(
             &mut roots,
-            claude_config_dir.join("skills"),
+            anvil_config_dir.join("skills"),
             SkillLookupOrigin::SkillsDir,
         );
         push_skill_lookup_root(
             &mut roots,
-            claude_config_dir.join("skills").join("omc-learned"),
+            anvil_config_dir.join("skills").join("omc-learned"),
             SkillLookupOrigin::SkillsDir,
         );
         push_skill_lookup_root(
             &mut roots,
-            claude_config_dir.join("commands"),
+            anvil_config_dir.join("commands"),
             SkillLookupOrigin::LegacyCommandsDir,
         );
     }
@@ -3452,7 +3452,7 @@ fn push_project_skill_lookup_roots(roots: &mut Vec<SkillLookupRoot>, cwd: &std::
         push_prefixed_skill_lookup_roots(roots, &ancestor.join(".agents"));
         push_prefixed_skill_lookup_roots(roots, &ancestor.join(".claw"));
         push_prefixed_skill_lookup_roots(roots, &ancestor.join(".codex"));
-        push_prefixed_skill_lookup_roots(roots, &ancestor.join(".claude"));
+        push_prefixed_skill_lookup_roots(roots, &ancestor.join(".anvil"));
     }
 }
 
@@ -3460,7 +3460,7 @@ fn push_home_skill_lookup_roots(roots: &mut Vec<SkillLookupRoot>, home: &std::pa
     push_prefixed_skill_lookup_roots(roots, &home.join(".omc"));
     push_prefixed_skill_lookup_roots(roots, &home.join(".claw"));
     push_prefixed_skill_lookup_roots(roots, &home.join(".codex"));
-    push_prefixed_skill_lookup_roots(roots, &home.join(".claude"));
+    push_prefixed_skill_lookup_roots(roots, &home.join(".anvil"));
     push_skill_lookup_root(
         roots,
         home.join(".agents").join("skills"),
@@ -3473,7 +3473,7 @@ fn push_home_skill_lookup_roots(roots: &mut Vec<SkillLookupRoot>, home: &std::pa
     );
     push_skill_lookup_root(
         roots,
-        home.join(".claude").join("skills").join("omc-learned"),
+        home.join(".anvil").join("skills").join("omc-learned"),
         SkillLookupOrigin::SkillsDir,
     );
 }
@@ -3624,7 +3624,7 @@ fn parse_skill_frontmatter_value(contents: &str, key: &str) -> Option<String> {
     None
 }
 
-const DEFAULT_AGENT_MODEL: &str = "claude-opus-4-6";
+const DEFAULT_AGENT_MODEL: &str = "deepseek-v4-pro";
 const DEFAULT_AGENT_SYSTEM_DATE: &str = "2026-03-31";
 const DEFAULT_AGENT_MAX_ITERATIONS: usize = 32;
 
@@ -8022,13 +8022,13 @@ mod tests {
     }
 
     #[test]
-    fn skill_loads_project_local_claude_skill_prompt() {
+    fn skill_loads_project_local_skill_prompt() {
         let _guard = env_guard();
         let root = temp_path("project-skills");
         let home = root.join("home");
         let workspace = root.join("workspace");
         let nested = workspace.join("nested");
-        let skill_dir = workspace.join(".claude").join("skills").join("trace");
+        let skill_dir = workspace.join(".anvil").join("skills").join("trace");
         fs::create_dir_all(&skill_dir).expect("skill dir should exist");
         fs::create_dir_all(&nested).expect("nested cwd should exist");
         fs::write(
@@ -8053,7 +8053,7 @@ mod tests {
         assert!(output["path"]
             .as_str()
             .expect("path")
-            .ends_with(".claude/skills/trace/SKILL.md"));
+            .ends_with(".anvil/skills/trace/SKILL.md"));
         assert_eq!(output["description"], "Project-local trace helper");
 
         std::env::set_current_dir(&original_dir).expect("restore cwd");
@@ -8143,12 +8143,12 @@ mod tests {
     }
 
     #[test]
-    fn skill_loads_learned_skill_from_claude_config_dir() {
+    fn skill_loads_learned_skill_from_config_dir() {
         let _guard = env_guard();
-        let root = temp_path("claude-config-learned-skill");
+        let root = temp_path("anvil-config-learned-skill");
         let home = root.join("home");
-        let claude_config_dir = root.join("claude-config");
-        let learned_skill_dir = claude_config_dir
+        let anvil_config_dir = root.join("anvil-config");
+        let learned_skill_dir = anvil_config_dir
             .join("skills")
             .join("omc-learned")
             .join("learned");
@@ -8162,11 +8162,11 @@ mod tests {
         let original_home = std::env::var("HOME").ok();
         let original_config_home = std::env::var("ANVIL_CONFIG_HOME").ok();
         let original_codex_home = std::env::var("CODEX_HOME").ok();
-        let original_claude_config_dir = std::env::var("CLAUDE_CONFIG_DIR").ok();
+        let original_anvil_config_dir = std::env::var("ANVIL_CONFIG_DIR").ok();
         std::env::set_var("HOME", &home);
         std::env::remove_var("ANVIL_CONFIG_HOME");
         std::env::remove_var("CODEX_HOME");
-        std::env::set_var("CLAUDE_CONFIG_DIR", &claude_config_dir);
+        std::env::set_var("ANVIL_CONFIG_DIR", &anvil_config_dir);
 
         let result = execute_tool("Skill", &json!({ "skill": "learned" }))
             .expect("learned skill should resolve");
@@ -8190,21 +8190,21 @@ mod tests {
             Some(value) => std::env::set_var("CODEX_HOME", value),
             None => std::env::remove_var("CODEX_HOME"),
         }
-        match original_claude_config_dir {
-            Some(value) => std::env::set_var("CLAUDE_CONFIG_DIR", value),
-            None => std::env::remove_var("CLAUDE_CONFIG_DIR"),
+        match original_anvil_config_dir {
+            Some(value) => std::env::set_var("ANVIL_CONFIG_DIR", value),
+            None => std::env::remove_var("ANVIL_CONFIG_DIR"),
         }
         fs::remove_dir_all(root).expect("temp tree should clean up");
     }
 
     #[test]
-    fn skill_loads_direct_skill_and_legacy_command_from_claude_config_dir() {
+    fn skill_loads_direct_skill_and_legacy_command_from_config_dir() {
         let _guard = env_guard();
-        let root = temp_path("claude-config-direct-skill");
+        let root = temp_path("anvil-config-direct-skill");
         let home = root.join("home");
-        let claude_config_dir = root.join("claude-config");
-        let skill_dir = claude_config_dir.join("skills").join("statusline");
-        let command_dir = claude_config_dir.join("commands");
+        let anvil_config_dir = root.join("anvil-config");
+        let skill_dir = anvil_config_dir.join("skills").join("statusline");
+        let command_dir = anvil_config_dir.join("commands");
         fs::create_dir_all(&skill_dir).expect("direct skill dir should exist");
         fs::create_dir_all(&command_dir).expect("command dir should exist");
         fs::write(
@@ -8221,11 +8221,11 @@ mod tests {
         let original_home = std::env::var("HOME").ok();
         let original_config_home = std::env::var("ANVIL_CONFIG_HOME").ok();
         let original_codex_home = std::env::var("CODEX_HOME").ok();
-        let original_claude_config_dir = std::env::var("CLAUDE_CONFIG_DIR").ok();
+        let original_anvil_config_dir = std::env::var("ANVIL_CONFIG_DIR").ok();
         std::env::set_var("HOME", &home);
         std::env::remove_var("ANVIL_CONFIG_HOME");
         std::env::remove_var("CODEX_HOME");
-        std::env::set_var("CLAUDE_CONFIG_DIR", &claude_config_dir);
+        std::env::set_var("ANVIL_CONFIG_DIR", &anvil_config_dir);
 
         let direct_skill =
             execute_tool("Skill", &json!({ "skill": "statusline" })).expect("direct skill");
@@ -8262,9 +8262,9 @@ mod tests {
             Some(value) => std::env::set_var("CODEX_HOME", value),
             None => std::env::remove_var("CODEX_HOME"),
         }
-        match original_claude_config_dir {
-            Some(value) => std::env::set_var("CLAUDE_CONFIG_DIR", value),
-            None => std::env::remove_var("CLAUDE_CONFIG_DIR"),
+        match original_anvil_config_dir {
+            Some(value) => std::env::set_var("ANVIL_CONFIG_DIR", value),
+            None => std::env::remove_var("ANVIL_CONFIG_DIR"),
         }
         fs::remove_dir_all(root).expect("temp tree should clean up");
     }
@@ -8276,7 +8276,7 @@ mod tests {
         let home = root.join("home");
         let workspace = root.join("workspace");
         let nested = workspace.join("nested");
-        let command_dir = workspace.join(".claude").join("commands");
+        let command_dir = workspace.join(".anvil").join("commands");
         fs::create_dir_all(&command_dir).expect("legacy command dir should exist");
         fs::create_dir_all(&nested).expect("nested cwd should exist");
         fs::write(
@@ -8301,7 +8301,7 @@ mod tests {
         assert!(output["path"]
             .as_str()
             .expect("path")
-            .ends_with(".claude/commands/team.md"));
+            .ends_with(".anvil/commands/team.md"));
         assert_eq!(output["description"], "Legacy team workflow");
 
         std::env::set_current_dir(&original_dir).expect("restore cwd");
@@ -8450,7 +8450,7 @@ mod tests {
                 prompt: "Do the work".to_string(),
                 subagent_type: Some("Explore".to_string()),
                 name: Some("complete-task".to_string()),
-                model: Some("claude-sonnet-4-6".to_string()),
+                model: Some("deepseek-v4-pro".to_string()),
             },
             |job| {
                 persist_agent_terminal_state(
@@ -9041,7 +9041,7 @@ mod tests {
 
         // then: the prompt renders a generic model family identity
         assert!(prompt.contains("Model family: an AI assistant"));
-        assert!(!prompt.contains("Model family: Claude Opus 4.6"));
+        assert!(!prompt.contains("Model family: Anvil"));
 
         fs::remove_dir_all(root).expect("cleanup temp workspace");
     }
@@ -9079,7 +9079,7 @@ mod tests {
         }
 
         fn model_name(&self) -> &str {
-            "claude-sonnet-4-6"
+            "deepseek-v4-pro"
         }
     }
 
@@ -10083,7 +10083,7 @@ printf 'pwsh:%s' "$1"
 
         // when
         let client = ProviderRuntimeClient::new_with_fallback_config(
-            "claude-sonnet-4-6".to_string(),
+            "deepseek-v4-pro".to_string(),
             BTreeSet::new(),
             &fallback_config,
         )
@@ -10091,7 +10091,7 @@ printf 'pwsh:%s' "$1"
 
         // then
         assert_eq!(client.chain.len(), 1);
-        assert_eq!(client.chain[0].model, "claude-sonnet-4-6");
+        assert_eq!(client.chain[0].model, "deepseek-v4-pro");
 
         match original_anthropic {
             Some(value) => std::env::set_var("ANTHROPIC_API_KEY", value),
@@ -10116,7 +10116,7 @@ printf 'pwsh:%s' "$1"
 
         // when
         let client = ProviderRuntimeClient::new_with_fallback_config(
-            "claude-sonnet-4-6".to_string(),
+            "deepseek-v4-pro".to_string(),
             BTreeSet::new(),
             &fallback_config,
         )
@@ -10124,7 +10124,7 @@ printf 'pwsh:%s' "$1"
 
         // then
         assert_eq!(client.chain.len(), 3);
-        assert_eq!(client.chain[0].model, "claude-sonnet-4-6");
+        assert_eq!(client.chain[0].model, "deepseek-v4-pro");
         assert_eq!(client.chain[1].model, "grok-3");
         assert_eq!(client.chain[2].model, "grok-3-mini");
 
@@ -10150,12 +10150,12 @@ printf 'pwsh:%s' "$1"
         std::env::set_var("XAI_API_KEY", "xai-test-key");
         let fallback_config = ProviderFallbackConfig::new(
             Some("grok-3".to_string()),
-            vec!["claude-sonnet-4-6".to_string()],
+            vec!["deepseek-v4-pro".to_string()],
         );
 
         // when
         let client = ProviderRuntimeClient::new_with_fallback_config(
-            "claude-haiku-4-5-20251213".to_string(),
+            "deepseek-v4-flash".to_string(),
             BTreeSet::new(),
             &fallback_config,
         )
@@ -10164,7 +10164,7 @@ printf 'pwsh:%s' "$1"
         // then
         assert_eq!(client.chain.len(), 2);
         assert_eq!(client.chain[0].model, "grok-3");
-        assert_eq!(client.chain[1].model, "claude-sonnet-4-6");
+        assert_eq!(client.chain[1].model, "deepseek-v4-pro");
 
         match original_anthropic {
             Some(value) => std::env::set_var("ANTHROPIC_API_KEY", value),
@@ -10190,13 +10190,13 @@ printf 'pwsh:%s' "$1"
             None,
             vec![
                 "grok-3".to_string(),
-                "claude-haiku-4-5-20251213".to_string(),
+                "deepseek-v4-flash".to_string(),
             ],
         );
 
         // when
         let client = ProviderRuntimeClient::new_with_fallback_config(
-            "claude-sonnet-4-6".to_string(),
+            "deepseek-v4-pro".to_string(),
             BTreeSet::new(),
             &fallback_config,
         )
@@ -10204,8 +10204,8 @@ printf 'pwsh:%s' "$1"
 
         // then
         assert_eq!(client.chain.len(), 2);
-        assert_eq!(client.chain[0].model, "claude-sonnet-4-6");
-        assert_eq!(client.chain[1].model, "claude-haiku-4-5-20251213");
+        assert_eq!(client.chain[0].model, "deepseek-v4-pro");
+        assert_eq!(client.chain[1].model, "deepseek-v4-flash");
 
         match original_anthropic {
             Some(value) => std::env::set_var("ANTHROPIC_API_KEY", value),

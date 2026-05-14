@@ -10,7 +10,7 @@ use runtime::{
 };
 use serde::Deserialize;
 use serde_json::{Map, Value};
-use telemetry::{AnalyticsEvent, AnthropicRequestProfile, ClientIdentity, SessionTracer};
+use telemetry::{AnalyticsEvent, APIRequestProfile, ClientIdentity, SessionTracer};
 
 use crate::error::ApiError;
 use crate::http_client::build_http_client_or_default;
@@ -111,20 +111,20 @@ impl From<OAuthTokenSet> for AuthSource {
 }
 
 #[derive(Debug, Clone)]
-pub struct AnthropicClient {
+pub struct APIClient {
     http: reqwest::Client,
     auth: AuthSource,
     base_url: String,
     max_retries: u32,
     initial_backoff: Duration,
     max_backoff: Duration,
-    request_profile: AnthropicRequestProfile,
+    request_profile: APIRequestProfile,
     session_tracer: Option<SessionTracer>,
     prompt_cache: Option<PromptCache>,
     last_prompt_cache_record: Arc<Mutex<Option<PromptCacheRecord>>>,
 }
 
-impl AnthropicClient {
+impl APIClient {
     #[must_use]
     pub fn new(api_key: impl Into<String>) -> Self {
         Self {
@@ -134,7 +134,7 @@ impl AnthropicClient {
             max_retries: DEFAULT_MAX_RETRIES,
             initial_backoff: DEFAULT_INITIAL_BACKOFF,
             max_backoff: DEFAULT_MAX_BACKOFF,
-            request_profile: AnthropicRequestProfile::default(),
+            request_profile: APIRequestProfile::default(),
             session_tracer: None,
             prompt_cache: None,
             last_prompt_cache_record: Arc::new(Mutex::new(None)),
@@ -150,7 +150,7 @@ impl AnthropicClient {
             max_retries: DEFAULT_MAX_RETRIES,
             initial_backoff: DEFAULT_INITIAL_BACKOFF,
             max_backoff: DEFAULT_MAX_BACKOFF,
-            request_profile: AnthropicRequestProfile::default(),
+            request_profile: APIRequestProfile::default(),
             session_tracer: None,
             prompt_cache: None,
             last_prompt_cache_record: Arc::new(Mutex::new(None)),
@@ -247,7 +247,7 @@ impl AnthropicClient {
     }
 
     #[must_use]
-    pub fn request_profile(&self) -> &AnthropicRequestProfile {
+    pub fn request_profile(&self) -> &APIRequestProfile {
         &self.request_profile
     }
 
@@ -270,7 +270,7 @@ impl AnthropicClient {
     }
 
     #[must_use]
-    pub fn with_request_profile(mut self, request_profile: AnthropicRequestProfile) -> Self {
+    pub fn with_request_profile(mut self, request_profile: APIRequestProfile) -> Self {
         self.request_profile = request_profile;
         self
     }
@@ -301,7 +301,7 @@ impl AnthropicClient {
         let request_id = request_id_from_headers(http_response.headers());
         let body = http_response.text().await.map_err(ApiError::from)?;
         let mut response = serde_json::from_str::<MessageResponse>(&body).map_err(|error| {
-            ApiError::json_deserialize("Anthropic", &request.model, &body, error)
+            ApiError::json_deserialize("API", &request.model, &body, error)
         })?;
         if response.request_id.is_none() {
             response.request_id = request_id;
@@ -347,7 +347,7 @@ impl AnthropicClient {
         Ok(MessageStream {
             request_id: request_id_from_headers(response.headers()),
             response,
-            parser: SseParser::new().with_context("Anthropic", request.model.clone()),
+            parser: SseParser::new().with_context("API", request.model.clone()),
             pending: VecDeque::new(),
             done: false,
             request: request.clone(),
@@ -374,7 +374,7 @@ impl AnthropicClient {
         let response = expect_success(response).await?;
         let body = response.text().await.map_err(ApiError::from)?;
         serde_json::from_str::<OAuthTokenSet>(&body).map_err(|error| {
-            ApiError::json_deserialize("Anthropic OAuth (exchange)", "n/a", &body, error)
+            ApiError::json_deserialize("API OAuth (exchange)", "n/a", &body, error)
         })
     }
 
@@ -394,7 +394,7 @@ impl AnthropicClient {
         let response = expect_success(response).await?;
         let body = response.text().await.map_err(ApiError::from)?;
         serde_json::from_str::<OAuthTokenSet>(&body).map_err(|error| {
-            ApiError::json_deserialize("Anthropic OAuth (refresh)", "n/a", &body, error)
+            ApiError::json_deserialize("API OAuth (refresh)", "n/a", &body, error)
         })
     }
 
@@ -490,7 +490,7 @@ impl AnthropicClient {
         // Always run the local byte-estimate guard first. This catches
         // oversized requests even if the remote count_tokens endpoint is
         // unreachable, misconfigured, or unimplemented (e.g., third-party
-        // Anthropic-compatible gateways). If byte estimation already flags
+        // API-compatible gateways). If byte estimation already flags
         // the request as oversized, reject immediately without a network
         // round trip.
         super::preflight_message_request(request)?;
@@ -499,7 +499,7 @@ impl AnthropicClient {
             return Ok(());
         };
 
-        // Best-effort refinement using the Anthropic count_tokens endpoint.
+        // Best-effort refinement using the API count_tokens endpoint.
         // On any failure (network, parse, auth), fall back to the local
         // byte-estimate result which already passed above.
         let Ok(counted_input_tokens) = self.count_tokens(request).await else {
@@ -541,7 +541,7 @@ impl AnthropicClient {
         let response = expect_success(response).await?;
         let body = response.text().await.map_err(ApiError::from)?;
         let parsed = serde_json::from_str::<CountTokensResponse>(&body).map_err(|error| {
-            ApiError::json_deserialize("Anthropic count_tokens", &request.model, &body, error)
+            ApiError::json_deserialize("API count_tokens", &request.model, &body, error)
         })?;
         Ok(parsed.input_tokens)
     }
@@ -683,7 +683,7 @@ fn resolve_saved_oauth_token_set(
     let Some(refresh_token) = token_set.refresh_token.clone() else {
         return Err(ApiError::ExpiredOAuthToken);
     };
-    let client = AnthropicClient::from_auth(AuthSource::None).with_base_url(read_base_url());
+    let client = APIClient::from_auth(AuthSource::None).with_base_url(read_base_url());
     let refreshed = client_runtime_block_on(async {
         client
             .refresh_oauth_token(
@@ -774,7 +774,7 @@ fn request_id_from_headers(headers: &reqwest::header::HeaderMap) -> Option<Strin
         .map(ToOwned::to_owned)
 }
 
-impl Provider for AnthropicClient {
+impl Provider for APIClient {
     type Stream = MessageStream;
 
     fn send_message<'a>(
@@ -871,7 +871,7 @@ async fn expect_success(response: reqwest::Response) -> Result<reqwest::Response
 
     let request_id = request_id_from_headers(response.headers());
     let body = response.text().await.unwrap_or_else(|_| String::new());
-    let parsed_error = serde_json::from_str::<AnthropicErrorEnvelope>(&body).ok();
+    let parsed_error = serde_json::from_str::<APIErrorEnvelope>(&body).ok();
     let retryable = is_retryable_status(status);
 
     Err(ApiError::Api {
@@ -893,7 +893,7 @@ const fn is_retryable_status(status: reqwest::StatusCode) -> bool {
     matches!(status.as_u16(), 408 | 409 | 429 | 500 | 502 | 503 | 504)
 }
 
-/// Anthropic API keys (`sk-ant-*`) are accepted over the `x-api-key` header
+/// API API keys (`sk-ant-*`) are accepted over the `x-api-key` header
 /// and rejected with HTTP 401 "Invalid bearer token" when sent as a Bearer
 /// token via `ANTHROPIC_AUTH_TOKEN`. This happens often enough in the wild
 /// (users copy-paste an `sk-ant-...` key into `ANTHROPIC_AUTH_TOKEN` because
@@ -985,10 +985,10 @@ fn enrich_bearer_auth_error(error: ApiError, auth: &AuthSource) -> ApiError {
 fn strip_unsupported_beta_body_fields(body: &mut Value) {
     if let Some(object) = body.as_object_mut() {
         object.remove("betas");
-        // These fields are OpenAI-compatible only; Anthropic rejects them.
+        // These fields are OpenAI-compatible only; API rejects them.
         object.remove("frequency_penalty");
         object.remove("presence_penalty");
-        // Anthropic uses "stop_sequences" not "stop". Convert if present.
+        // API uses "stop_sequences" not "stop". Convert if present.
         if let Some(stop_val) = object.remove("stop") {
             if stop_val.as_array().is_some_and(|a| !a.is_empty()) {
                 object.insert("stop_sequences".to_string(), stop_val);
@@ -998,12 +998,12 @@ fn strip_unsupported_beta_body_fields(body: &mut Value) {
 }
 
 #[derive(Debug, Deserialize)]
-struct AnthropicErrorEnvelope {
-    error: AnthropicErrorBody,
+struct APIErrorEnvelope {
+    error: APIErrorBody,
 }
 
 #[derive(Debug, Deserialize)]
-struct AnthropicErrorBody {
+struct APIErrorBody {
     #[serde(rename = "type")]
     error_type: String,
     message: String,
@@ -1022,7 +1022,7 @@ mod tests {
 
     use super::{
         now_unix_timestamp, oauth_token_is_expired, resolve_saved_oauth_token,
-        resolve_startup_auth_source, AnthropicClient, AuthSource, OAuthTokenSet,
+        resolve_startup_auth_source, APIClient, AuthSource, OAuthTokenSet,
     };
     use crate::types::{ContentBlockDelta, MessageRequest};
 
@@ -1284,7 +1284,7 @@ mod tests {
     #[test]
     fn message_request_stream_helper_sets_stream_true() {
         let request = MessageRequest {
-            model: "claude-opus-4-6".to_string(),
+            model: "deepseek-v4-pro".to_string(),
             max_tokens: 64,
             messages: vec![],
             system: None,
@@ -1299,7 +1299,7 @@ mod tests {
 
     #[test]
     fn backoff_doubles_until_maximum() {
-        let client = AnthropicClient::new("test-key").with_retry_policy(
+        let client = APIClient::new("test-key").with_retry_policy(
             3,
             Duration::from_millis(10),
             Duration::from_millis(25),
@@ -1320,7 +1320,7 @@ mod tests {
 
     #[test]
     fn jittered_backoff_stays_within_additive_bounds_and_varies() {
-        let client = AnthropicClient::new("test-key").with_retry_policy(
+        let client = APIClient::new("test-key").with_retry_policy(
             8,
             Duration::from_secs(1),
             Duration::from_secs(128),
@@ -1351,7 +1351,7 @@ mod tests {
 
     #[test]
     fn default_retry_policy_matches_exponential_schedule() {
-        let client = AnthropicClient::new("test-key");
+        let client = APIClient::new("test-key");
         assert_eq!(
             client.backoff_for_attempt(1).expect("attempt 1"),
             Duration::from_secs(1)
@@ -1438,9 +1438,9 @@ mod tests {
     #[test]
     fn strip_unsupported_beta_body_fields_removes_betas_array() {
         let mut body = serde_json::json!({
-            "model": "claude-sonnet-4-6",
+            "model": "deepseek-v4-pro",
             "max_tokens": 1024,
-            "betas": ["claude-code-20250219", "prompt-caching-scope-2026-01-05"],
+            "betas": ["anvil-agentic-20250219", "prompt-caching-scope-2026-01-05"],
             "metadata": {"source": "test"},
         });
 
@@ -1452,7 +1452,7 @@ mod tests {
         );
         assert_eq!(
             body.get("model").and_then(serde_json::Value::as_str),
-            Some("claude-sonnet-4-6")
+            Some("deepseek-v4-pro")
         );
         assert_eq!(body["max_tokens"], serde_json::json!(1024));
         assert_eq!(body["metadata"]["source"], serde_json::json!("test"));
@@ -1461,7 +1461,7 @@ mod tests {
     #[test]
     fn strip_unsupported_beta_body_fields_is_a_noop_when_betas_absent() {
         let mut body = serde_json::json!({
-            "model": "claude-sonnet-4-6",
+            "model": "deepseek-v4-pro",
             "max_tokens": 1024,
         });
         let original = body.clone();
@@ -1474,7 +1474,7 @@ mod tests {
     #[test]
     fn strip_removes_openai_only_fields_and_converts_stop() {
         let mut body = serde_json::json!({
-            "model": "claude-sonnet-4-6",
+            "model": "deepseek-v4-pro",
             "max_tokens": 1024,
             "temperature": 0.7,
             "frequency_penalty": 0.5,
@@ -1484,16 +1484,16 @@ mod tests {
 
         super::strip_unsupported_beta_body_fields(&mut body);
 
-        // temperature is kept (Anthropic supports it)
+        // temperature is kept (API supports it)
         assert_eq!(body["temperature"], serde_json::json!(0.7));
         // frequency_penalty and presence_penalty are removed
         assert!(
             body.get("frequency_penalty").is_none(),
-            "frequency_penalty must be stripped for Anthropic"
+            "frequency_penalty must be stripped for API"
         );
         assert!(
             body.get("presence_penalty").is_none(),
-            "presence_penalty must be stripped for Anthropic"
+            "presence_penalty must be stripped for API"
         );
         // stop is renamed to stop_sequences
         assert!(body.get("stop").is_none(), "stop must be renamed");
@@ -1503,7 +1503,7 @@ mod tests {
     #[test]
     fn strip_does_not_add_empty_stop_sequences() {
         let mut body = serde_json::json!({
-            "model": "claude-sonnet-4-6",
+            "model": "deepseek-v4-pro",
             "max_tokens": 1024,
             "stop": [],
         });
@@ -1519,9 +1519,9 @@ mod tests {
 
     #[test]
     fn rendered_request_body_strips_betas_for_standard_messages_endpoint() {
-        let client = AnthropicClient::new("test-key").with_beta("tools-2026-04-01");
+        let client = APIClient::new("test-key").with_beta("tools-2026-04-01");
         let request = MessageRequest {
-            model: "claude-sonnet-4-6".to_string(),
+            model: "deepseek-v4-pro".to_string(),
             max_tokens: 64,
             messages: vec![],
             system: None,
@@ -1547,7 +1547,7 @@ mod tests {
         );
         assert_eq!(
             rendered.get("model").and_then(serde_json::Value::as_str),
-            Some("claude-sonnet-4-6")
+            Some("deepseek-v4-pro")
         );
     }
 

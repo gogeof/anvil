@@ -939,7 +939,7 @@ mod tests {
         }
 
         fn model_name(&self) -> &str {
-            "claude-sonnet-4-6"
+            "deepseek-v4-pro"
         }
     }
 
@@ -1074,7 +1074,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1123,7 +1123,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1189,7 +1189,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1265,7 +1265,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1344,7 +1344,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1409,7 +1409,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1455,7 +1455,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1501,7 +1501,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1596,7 +1596,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1655,7 +1655,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1704,7 +1704,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1755,7 +1755,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 
@@ -1887,7 +1887,7 @@ mod tests {
             }
 
             fn model_name(&self) -> &str {
-                "claude-sonnet-4-6"
+                "deepseek-v4-pro"
             }
         }
 

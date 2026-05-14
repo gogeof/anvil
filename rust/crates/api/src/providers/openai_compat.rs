@@ -1643,7 +1643,7 @@ mod tests {
             "deepseek-reasoner",
             "deepseek-chat",
             "gpt-4o",
-            "claude-sonnet-4-6",
+            "deepseek-v4-pro",
         ];
 
         // When checking whether history reasoning_content is required.
@@ -2068,7 +2068,7 @@ mod tests {
         assert!(is_reasoning_model("o3-mini"));
         assert!(!is_reasoning_model("gpt-4o"));
         assert!(!is_reasoning_model("grok-3"));
-        assert!(!is_reasoning_model("claude-sonnet-4-6"));
+        assert!(!is_reasoning_model("deepseek-v4-pro"));
     }
 
     #[test]
@@ -2306,7 +2306,7 @@ mod tests {
         // Non-kimi models should NOT be detected
         assert!(!super::model_rejects_is_error_field("gpt-4o"));
         assert!(!super::model_rejects_is_error_field("gpt-4"));
-        assert!(!super::model_rejects_is_error_field("claude-sonnet-4-6"));
+        assert!(!super::model_rejects_is_error_field("deepseek-v4-pro"));
         assert!(!super::model_rejects_is_error_field("grok-3"));
         assert!(!super::model_rejects_is_error_field("grok-3-mini"));
         assert!(!super::model_rejects_is_error_field("xai/grok-3"));
@@ -2361,11 +2361,11 @@ mod tests {
         );
         assert_eq!(translated2[0]["is_error"], json!(false));
 
-        // Test with claude model (should include is_error)
-        let translated3 = super::translate_message(&message, "claude-sonnet-4-6");
+        // Test with model (should include is_error)
+        let translated3 = super::translate_message(&message, "deepseek-v4-pro");
         assert!(
             translated3[0].get("is_error").is_some(),
-            "claude should include is_error field"
+            "response should include is_error field"
         );
     }
 

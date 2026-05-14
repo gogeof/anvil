@@ -27,7 +27,7 @@ import re
 COMPARISONS_DIR = os.path.expanduser("~/.anvil/comparisons")
 INDEX_FILE = os.path.join(COMPARISONS_DIR, "index.json")
 ANVIL_BIN = "/usr/local/bin/anvil"
-CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
+REFERENCE_BIN = os.path.expanduser("~/.local/bin/claude")
 DEFAULT_TIMEOUT = 120
 
 # ====== 预设任务集 ======
@@ -113,13 +113,13 @@ def run_anvil(task, timeout=DEFAULT_TIMEOUT):
     )
 
 
-def run_claude(task, timeout=DEFAULT_TIMEOUT):
+def run_reference(task, timeout=DEFAULT_TIMEOUT):
     """Run Claude Code CLI on the task."""
     env = os.environ.copy()
     return run_cmd(
-        [CLAUDE_BIN, "-p", task, "--output-format", "text"],
+        [REFERENCE_BIN, "-p", task, "--output-format", "text"],
         timeout=timeout,
-        label="claude",
+        label="reference",
     )
 
 
@@ -143,23 +143,23 @@ def extract_content(output):
     return "\n".join(cleaned).strip()
 
 
-def analyze_differences(anvil_text, claude_text):
+def analyze_differences(anvil_text, ref_text):
     """分析两个输出之间的差异点。"""
     differences = []
     a_len = len(anvil_text)
-    c_len = len(claude_text)
+    c_len = len(ref_text)
     if abs(a_len - c_len) > max(a_len, c_len) * 0.3:
-        longer = "anvil" if a_len > c_len else "claude"
+        longer = "anvil" if a_len > c_len else "reference"
         differences.append({
             "type": "length_difference",
-            "detail": f"{longer} 的回答明显更长（anvil: {a_len} chars, claude: {c_len} chars）",
+            "detail": f"{longer} 的回答明显更长（anvil: {a_len} chars, reference: {c_len} chars）",
         })
     a_has_code = "```" in anvil_text
-    c_has_code = "```" in claude_text
+    c_has_code = "```" in ref_text
     if a_has_code != c_has_code:
         differences.append({
             "type": "code_blocks",
-            "detail": f"{'anvil' if a_has_code else 'claude'} 提供了代码块而{' claude' if a_has_code else ' anvil'}没有",
+            "detail": f"{'anvil' if a_has_code else 'reference'} 提供了代码块而{' claude' if a_has_code else ' anvil'}没有",
         })
     for keyword, aspect in [
         ("error", "错误处理"),
@@ -169,21 +169,21 @@ def analyze_differences(anvil_text, claude_text):
         ("performance", "性能考虑"),
     ]:
         a_has = keyword.lower() in anvil_text.lower()
-        c_has = keyword.lower() in claude_text.lower()
+        c_has = keyword.lower() in ref_text.lower()
         if a_has != c_has:
             differences.append({
                 "type": f"aspect_{keyword}",
-                "detail": f"{'anvil' if a_has else 'claude'} 提到了{aspect}而{' claude' if a_has else ' anvil'}没有",
+                "detail": f"{'anvil' if a_has else 'reference'} 提到了{aspect}而{' claude' if a_has else ' anvil'}没有",
             })
     return differences
 
 
 def generate_report(task, anvil_out, anvil_err, anvil_code, anvil_time,
-                     claude_out, claude_err, claude_code, claude_time):
+                     ref_out, ref_err, ref_code, ref_time):
     """生成结构化的对比报告。"""
     anvil_content = extract_content(anvil_out)
-    claude_content = extract_content(claude_out)
-    differences = analyze_differences(anvil_content, claude_content)
+    ref_content = extract_content(ref_out)
+    differences = analyze_differences(anvil_content, ref_content)
     now = datetime.datetime.now().isoformat()
     comparison_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -198,25 +198,25 @@ def generate_report(task, anvil_out, anvil_err, anvil_code, anvil_time,
                 "output_length": len(anvil_content),
                 "has_error": anvil_code != 0 or bool(anvil_err.strip()),
             },
-            "claude": {
-                "exit_code": claude_code,
-                "duration_seconds": round(claude_time, 2),
-                "output_length": len(claude_content),
-                "has_error": claude_code != 0 or bool(claude_err.strip()),
+            "reference": {
+                "exit_code": ref_code,
+                "duration_seconds": round(ref_time, 2),
+                "output_length": len(ref_content),
+                "has_error": ref_code != 0 or bool(ref_err.strip()),
             },
         },
         "differences": differences,
         "difference_count": len(differences),
-        "verdict": _generate_verdict(differences, anvil_content, claude_content),
+        "verdict": _generate_verdict(differences, anvil_content, ref_content),
         "cleaned": {
             "anvil": anvil_content,
-            "claude": claude_content,
+            "reference": ref_content,
         },
     }
     return report
 
 
-def _generate_verdict(differences, anvil_text, claude_text):
+def _generate_verdict(differences, anvil_text, ref_text):
     if not differences:
         return {"summary": "两个工具的回答基本一致", "first_principles": "anvil 实现了同等功能，继续保持。"}
     fp_insights = []
@@ -260,12 +260,12 @@ def format_report_summary(report):
     lines.append(f"  anvil:   退出码={s['anvil']['exit_code']}, "
                  f"耗时={s['anvil']['duration_seconds']}s, "
                  f"输出={s['anvil']['output_length']}字符")
-    lines.append(f"  参考基准: 退出码={s['claude']['exit_code']}, "
-                 f"耗时={s['claude']['duration_seconds']}s, "
-                 f"输出={s['claude']['output_length']}字符")
-    if s['anvil']['has_error'] and not s['claude']['has_error']:
+    lines.append(f"  参考基准: 退出码={s['reference']['exit_code']}, "
+                 f"耗时={s['reference']['duration_seconds']}s, "
+                 f"输出={s['reference']['output_length']}字符")
+    if s['anvil']['has_error'] and not s['reference']['has_error']:
         lines.append("  ⚠ anvil 执行出错，参考基准正常")
-    elif not s['anvil']['has_error'] and s['claude']['has_error']:
+    elif not s['anvil']['has_error'] and s['reference']['has_error']:
         lines.append("  ⚠ 参考基准执行出错，anvil 正常")
     lines.append("")
     verdict = report.get("verdict", {})
@@ -289,7 +289,7 @@ def format_report_summary(report):
     lines.append(cleaned[:600] + ("..." if len(cleaned) > 600 else ""))
     lines.append("")
     lines.append("--- 参考基准回答 ---")
-    cleaned_c = report.get("cleaned", {}).get("claude", "")
+    cleaned_c = report.get("cleaned", {}).get("reference", "")
     lines.append(cleaned_c[:600] + ("..." if len(cleaned_c) > 600 else ""))
     lines.append("")
     lines.append("=" * 60)
@@ -327,7 +327,7 @@ def do_compare(task):
     a_status = f"done ({a_time:.1f}s, exit={a_code})" if a_code != -1 else f"TIMEOUT ({a_time:.1f}s)"
     print(f"   {a_status}")
     print("🧠 正在执行参考基准...")
-    c_out, c_err, c_code, c_time = run_claude(task)
+    c_out, c_err, c_code, c_time = run_reference(task)
     c_status = f"done ({c_time:.1f}s, exit={c_code})" if c_code != -1 else f"TIMEOUT ({c_time:.1f}s)"
     print(f"   {c_status}")
     print()
@@ -360,12 +360,12 @@ def do_batch(task_file):
     for i, task in enumerate(tasks):
         print(f"\n[{i+1}/{len(tasks)}] {task[:60]}...")
         a_out, a_err, a_code, a_time = run_anvil(task)
-        c_out, c_err, c_code, c_time = run_claude(task)
+        c_out, c_err, c_code, c_time = run_reference(task)
         report = generate_report(task, a_out, a_err, a_code, a_time,
                                    c_out, c_err, c_code, c_time)
         filepath = save_report(report)
         results.append(report)
-        print(f"   ✅ anvil: {a_time:.1f}s | claude: {c_time:.1f}s "
+        print(f"   ✅ anvil: {a_time:.1f}s | reference: {c_time:.1f}s "
               f"| diff: {report['difference_count']}处 | {filepath}")
 
     # 输出汇总
@@ -378,13 +378,13 @@ def do_batch(task_file):
         s = r["summary"]
         if s["anvil"]["has_error"] or s["anvil"]["exit_code"] == -1:
             anvil_scores["timeout"] += 1
-        elif s["claude"]["has_error"] or s["claude"]["exit_code"] == -1:
+        elif s["reference"]["has_error"] or s["reference"]["exit_code"] == -1:
             anvil_scores["win"] += 1
         else:
             diff_count = r["difference_count"]
             if diff_count == 0:
                 anvil_scores["tie"] += 1
-            elif s["anvil"]["output_length"] >= s["claude"]["output_length"] * 0.7:
+            elif s["anvil"]["output_length"] >= s["reference"]["output_length"] * 0.7:
                 anvil_scores["tie"] += 1
             else:
                 anvil_scores["lose"] += 1
@@ -396,7 +396,7 @@ def do_batch(task_file):
 
     # 找出 anvil 表现最差的任务
     worst = sorted(results, key=lambda r: (
-        r["summary"]["claude"]["output_length"] - r["summary"]["anvil"]["output_length"]
+        r["summary"]["reference"]["output_length"] - r["summary"]["anvil"]["output_length"]
     ), reverse=True)[:3]
     if worst:
         print(f"\n🎯 需要优先优化的任务:")

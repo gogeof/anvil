@@ -123,7 +123,7 @@ const SLASH_COMMAND_SPECS: &[SlashCommandSpec] = &[
     SlashCommandSpec {
         name: "config",
         aliases: &[],
-        summary: "Inspect Claude config files or merged sections",
+        summary: "Inspect config files or merged sections",
         argument_hint: Some("[env|hooks|model|plugins]"),
         resume_supported: true,
     },
@@ -137,7 +137,7 @@ const SLASH_COMMAND_SPECS: &[SlashCommandSpec] = &[
     SlashCommandSpec {
         name: "memory",
         aliases: &[],
-        summary: "Inspect loaded Claude instruction memory files",
+        summary: "Inspect loaded instruction memory files",
         argument_hint: None,
         resume_supported: true,
     },
@@ -540,7 +540,7 @@ const SLASH_COMMAND_SPECS: &[SlashCommandSpec] = &[
     SlashCommandSpec {
         name: "api-key",
         aliases: &[],
-        summary: "Show or set the Anthropic API key",
+        summary: "Show or set the API API key",
         argument_hint: Some("[key]"),
         resume_supported: false,
     },
@@ -2110,12 +2110,12 @@ pub struct PluginsCommandResult {
 enum DefinitionSource {
     ProjectClaw,
     ProjectCodex,
-    ProjectClaude,
+    ProjectAnvil,
     UserClawConfigHome,
     UserCodexHome,
     UserClaw,
     UserCodex,
-    UserClaude,
+    UserAnvil,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -2138,11 +2138,11 @@ impl DefinitionScope {
 impl DefinitionSource {
     fn report_scope(self) -> DefinitionScope {
         match self {
-            Self::ProjectClaw | Self::ProjectCodex | Self::ProjectClaude => {
+            Self::ProjectClaw | Self::ProjectCodex | Self::ProjectAnvil => {
                 DefinitionScope::Project
             }
             Self::UserClawConfigHome | Self::UserCodexHome => DefinitionScope::UserConfigHome,
-            Self::UserClaw | Self::UserCodex | Self::UserClaude => DefinitionScope::UserHome,
+            Self::UserClaw | Self::UserCodex | Self::UserAnvil => DefinitionScope::UserHome,
         }
     }
 
@@ -2953,8 +2953,8 @@ fn discover_definition_roots(cwd: &Path, leaf: &str) -> Vec<(DefinitionSource, P
         );
         push_unique_root(
             &mut roots,
-            DefinitionSource::ProjectClaude,
-            ancestor.join(".claude").join(leaf),
+            DefinitionSource::ProjectAnvil,
+            ancestor.join(".anvil").join(leaf),
         );
     }
 
@@ -2974,11 +2974,11 @@ fn discover_definition_roots(cwd: &Path, leaf: &str) -> Vec<(DefinitionSource, P
         );
     }
 
-    if let Ok(claude_config_dir) = env::var("CLAUDE_CONFIG_DIR") {
+    if let Ok(anvil_config_dir) = env::var("ANVIL_CONFIG_DIR") {
         push_unique_root(
             &mut roots,
-            DefinitionSource::UserClaude,
-            PathBuf::from(claude_config_dir).join(leaf),
+            DefinitionSource::UserAnvil,
+            PathBuf::from(anvil_config_dir).join(leaf),
         );
     }
 
@@ -2996,8 +2996,8 @@ fn discover_definition_roots(cwd: &Path, leaf: &str) -> Vec<(DefinitionSource, P
         );
         push_unique_root(
             &mut roots,
-            DefinitionSource::UserClaude,
-            home.join(".claude").join(leaf),
+            DefinitionSource::UserAnvil,
+            home.join(".anvil").join(leaf),
         );
     }
 
@@ -3035,8 +3035,8 @@ fn discover_skill_roots(cwd: &Path) -> Vec<SkillRoot> {
         );
         push_unique_skill_root(
             &mut roots,
-            DefinitionSource::ProjectClaude,
-            ancestor.join(".claude").join("skills"),
+            DefinitionSource::ProjectAnvil,
+            ancestor.join(".anvil").join("skills"),
             SkillOrigin::SkillsDir,
         );
         push_unique_skill_root(
@@ -3053,8 +3053,8 @@ fn discover_skill_roots(cwd: &Path) -> Vec<SkillRoot> {
         );
         push_unique_skill_root(
             &mut roots,
-            DefinitionSource::ProjectClaude,
-            ancestor.join(".claude").join("commands"),
+            DefinitionSource::ProjectAnvil,
+            ancestor.join(".anvil").join("commands"),
             SkillOrigin::LegacyCommandsDir,
         );
     }
@@ -3125,43 +3125,43 @@ fn discover_skill_roots(cwd: &Path) -> Vec<SkillRoot> {
         );
         push_unique_skill_root(
             &mut roots,
-            DefinitionSource::UserClaude,
-            home.join(".claude").join("skills"),
+            DefinitionSource::UserAnvil,
+            home.join(".anvil").join("skills"),
             SkillOrigin::SkillsDir,
         );
         push_unique_skill_root(
             &mut roots,
-            DefinitionSource::UserClaude,
-            home.join(".claude").join("skills").join("omc-learned"),
+            DefinitionSource::UserAnvil,
+            home.join(".anvil").join("skills").join("omc-learned"),
             SkillOrigin::SkillsDir,
         );
         push_unique_skill_root(
             &mut roots,
-            DefinitionSource::UserClaude,
-            home.join(".claude").join("commands"),
+            DefinitionSource::UserAnvil,
+            home.join(".anvil").join("commands"),
             SkillOrigin::LegacyCommandsDir,
         );
     }
 
-    if let Ok(claude_config_dir) = env::var("CLAUDE_CONFIG_DIR") {
-        let claude_config_dir = PathBuf::from(claude_config_dir);
-        let skills_dir = claude_config_dir.join("skills");
+    if let Ok(anvil_config_dir) = env::var("ANVIL_CONFIG_DIR") {
+        let anvil_config_dir = PathBuf::from(anvil_config_dir);
+        let skills_dir = anvil_config_dir.join("skills");
         push_unique_skill_root(
             &mut roots,
-            DefinitionSource::UserClaude,
+            DefinitionSource::UserAnvil,
             skills_dir.clone(),
             SkillOrigin::SkillsDir,
         );
         push_unique_skill_root(
             &mut roots,
-            DefinitionSource::UserClaude,
+            DefinitionSource::UserAnvil,
             skills_dir.join("omc-learned"),
             SkillOrigin::SkillsDir,
         );
         push_unique_skill_root(
             &mut roots,
-            DefinitionSource::UserClaude,
-            claude_config_dir.join("commands"),
+            DefinitionSource::UserAnvil,
+            anvil_config_dir.join("commands"),
             SkillOrigin::LegacyCommandsDir,
         );
     }
@@ -3952,7 +3952,7 @@ fn render_skills_usage(unexpected: Option<&str>) -> String {
         "  Direct CLI       claw skills [list|install <path>|help|<skill> [args]]".to_string(),
         "  Invoke           /skills help overview -> $help overview".to_string(),
         "  Install root     $ANVIL_CONFIG_HOME/skills or ~/.anvil/skills".to_string(),
-        "  Sources          .anvil/skills, .omc/skills, .agents/skills, .codex/skills, .claude/skills, ~/.anvil/skills, ~/.omc/skills, ~/.claude/skills/omc-learned, ~/.codex/skills, ~/.claude/skills, legacy /commands".to_string(),
+        "  Sources          .anvil/skills, .omc/skills, .agents/skills, .codex/skills, .anvil/skills, ~/.anvil/skills, ~/.omc/skills, ~/.anvil/skills/omc-learned, ~/.codex/skills, ~/.anvil/skills, legacy /commands".to_string(),
     ];
     if let Some(args) = unexpected {
         lines.push(format!("  Unexpected       {args}"));
@@ -3975,12 +3975,12 @@ fn render_skills_usage_json(unexpected: Option<&str>) -> Value {
                 ".omc/skills",
                 ".agents/skills",
                 ".codex/skills",
-                ".claude/skills",
+                ".anvil/skills",
                 "~/.anvil/skills",
                 "~/.omc/skills",
-                "~/.claude/skills/omc-learned",
+                "~/.anvil/skills/learned",
                 "~/.codex/skills",
-                "~/.claude/skills",
+                "~/.anvil/skills",
                 "legacy /commands",
                 "legacy fallback dirs still load automatically"
             ],
@@ -4095,11 +4095,11 @@ fn definition_source_id(source: DefinitionSource) -> &'static str {
     match source {
         DefinitionSource::ProjectClaw
         | DefinitionSource::ProjectCodex
-        | DefinitionSource::ProjectClaude => "project_claw",
+        | DefinitionSource::ProjectAnvil => "project_claw",
         DefinitionSource::UserClawConfigHome | DefinitionSource::UserCodexHome => {
             "user_claw_config_home"
         }
-        DefinitionSource::UserClaw | DefinitionSource::UserCodex | DefinitionSource::UserClaude => {
+        DefinitionSource::UserClaw | DefinitionSource::UserCodex | DefinitionSource::UserAnvil => {
             "user_claw"
         }
     }
@@ -4396,9 +4396,9 @@ mod tests {
     }
 
     fn write_external_plugin(root: &Path, name: &str, version: &str) {
-        fs::create_dir_all(root.join(".claude-plugin")).expect("manifest dir");
+        fs::create_dir_all(root.join(".anvil-plugin")).expect("manifest dir");
         fs::write(
-            root.join(".claude-plugin").join("plugin.json"),
+            root.join(".anvil-plugin").join("plugin.json"),
             format!(
                 "{{\n  \"name\": \"{name}\",\n  \"version\": \"{version}\",\n  \"description\": \"commands plugin\"\n}}"
             ),
@@ -4407,9 +4407,9 @@ mod tests {
     }
 
     fn write_bundled_plugin(root: &Path, name: &str, version: &str, default_enabled: bool) {
-        fs::create_dir_all(root.join(".claude-plugin")).expect("manifest dir");
+        fs::create_dir_all(root.join(".anvil-plugin")).expect("manifest dir");
         fs::write(
-            root.join(".claude-plugin").join("plugin.json"),
+            root.join(".anvil-plugin").join("plugin.json"),
             format!(
                 "{{\n  \"name\": \"{name}\",\n  \"version\": \"{version}\",\n  \"description\": \"bundled commands plugin\",\n  \"defaultEnabled\": {}\n}}",
                 if default_enabled { "true" } else { "false" }
@@ -4543,9 +4543,9 @@ mod tests {
             Ok(Some(SlashCommand::DebugToolCall))
         );
         assert_eq!(
-            SlashCommand::parse("/model claude-opus"),
+            SlashCommand::parse("/model deepseek-pro"),
             Ok(Some(SlashCommand::Model {
-                model: Some("claude-opus".to_string()),
+                model: Some("deepseek-pro".to_string()),
             }))
         );
         assert_eq!(
@@ -5097,7 +5097,7 @@ mod tests {
                 .is_none()
         );
         assert!(
-            handle_slash_command("/model claude", &session, CompactionConfig::default()).is_none()
+            handle_slash_command("/model deepseek", &session, CompactionConfig::default()).is_none()
         );
         assert!(handle_slash_command(
             "/permissions read-only",
@@ -5216,7 +5216,7 @@ mod tests {
         let workspace = temp_dir("agents-workspace");
         let project_agents = workspace.join(".codex").join("agents");
         let user_home = temp_dir("agents-home");
-        let user_agents = user_home.join(".claude").join("agents");
+        let user_agents = user_home.join(".anvil").join("agents");
 
         write_agent(
             &project_agents,
@@ -5329,7 +5329,7 @@ mod tests {
     fn lists_skills_from_project_and_user_roots() {
         let workspace = temp_dir("skills-workspace");
         let project_skills = workspace.join(".codex").join("skills");
-        let project_commands = workspace.join(".claude").join("commands");
+        let project_commands = workspace.join(".anvil").join("commands");
         let user_home = temp_dir("skills-home");
         let user_skills = user_home.join(".codex").join("skills");
 
@@ -5345,7 +5345,7 @@ mod tests {
                 origin: SkillOrigin::SkillsDir,
             },
             SkillRoot {
-                source: DefinitionSource::ProjectClaude,
+                source: DefinitionSource::ProjectAnvil,
                 path: project_commands,
                 origin: SkillOrigin::LegacyCommandsDir,
             },
@@ -5394,7 +5394,7 @@ mod tests {
     fn renders_skills_reports_as_json() {
         let workspace = temp_dir("skills-json-workspace");
         let project_skills = workspace.join(".codex").join("skills");
-        let project_commands = workspace.join(".claude").join("commands");
+        let project_commands = workspace.join(".anvil").join("commands");
         let user_home = temp_dir("skills-json-home");
         let user_skills = user_home.join(".codex").join("skills");
 
@@ -5410,7 +5410,7 @@ mod tests {
                 origin: SkillOrigin::SkillsDir,
             },
             SkillRoot {
-                source: DefinitionSource::ProjectClaude,
+                source: DefinitionSource::ProjectAnvil,
                 path: project_commands,
                 origin: SkillOrigin::LegacyCommandsDir,
             },
@@ -5470,7 +5470,7 @@ mod tests {
         assert!(skills_help.contains("Install root     $ANVIL_CONFIG_HOME/skills or ~/.anvil/skills"));
         assert!(skills_help.contains(".omc/skills"));
         assert!(skills_help.contains(".agents/skills"));
-        assert!(skills_help.contains("~/.claude/skills/omc-learned"));
+        assert!(skills_help.contains("~/.anvil/skills/learned"));
         assert!(skills_help.contains("legacy /commands"));
 
         let skills_unexpected =
@@ -5501,7 +5501,7 @@ mod tests {
         assert!(sources.iter().any(|value| value == "~/.omc/skills"));
         assert!(sources
             .iter()
-            .any(|value| value == "~/.claude/skills/omc-learned"));
+            .any(|value| value == "~/.anvil/skills/learned"));
 
         let _ = fs::remove_dir_all(cwd);
     }
@@ -5511,15 +5511,15 @@ mod tests {
         let _guard = env_guard();
         let workspace = temp_dir("skills-omc-workspace");
         let user_home = temp_dir("skills-omc-home");
-        let claude_config_dir = temp_dir("skills-omc-claude-config");
+        let anvil_config_dir = temp_dir("skills-config");
         let project_omc_skills = workspace.join(".omc").join("skills");
         let project_agents_skills = workspace.join(".agents").join("skills");
         let user_omc_skills = user_home.join(".omc").join("skills");
-        let claude_config_skills = claude_config_dir.join("skills");
-        let claude_config_commands = claude_config_dir.join("commands");
-        let learned_skills = claude_config_dir.join("skills").join("omc-learned");
+        let anvil_config_skills = anvil_config_dir.join("skills");
+        let anvil_config_commands = anvil_config_dir.join("commands");
+        let learned_skills = anvil_config_dir.join("skills").join("omc-learned");
         let original_home = std::env::var_os("HOME");
-        let original_claude_config_dir = std::env::var_os("CLAUDE_CONFIG_DIR");
+        let original_anvil_config_dir = std::env::var_os("ANVIL_CONFIG_DIR");
 
         write_skill(&project_omc_skills, "hud", "OMC HUD guidance");
         write_skill(
@@ -5529,26 +5529,26 @@ mod tests {
         );
         write_skill(&user_omc_skills, "cancel", "OMC cancel guidance");
         write_skill(
-            &claude_config_skills,
+            &anvil_config_skills,
             "statusline",
-            "Claude config skill guidance",
+            "Config skill guidance",
         );
         write_legacy_command(
-            &claude_config_commands,
+            &anvil_config_commands,
             "doctor-check",
-            "Claude config command guidance",
+            "Config command guidance",
         );
         write_skill(&learned_skills, "learned", "Learned skill guidance");
         std::env::set_var("HOME", &user_home);
-        std::env::set_var("CLAUDE_CONFIG_DIR", &claude_config_dir);
+        std::env::set_var("ANVIL_CONFIG_DIR", &anvil_config_dir);
 
         let report = super::handle_skills_slash_command(None, &workspace).expect("skills list");
         assert!(report.contains("available skills"));
         assert!(report.contains("hud · OMC HUD guidance"));
         assert!(report.contains("trace · Compatibility skill guidance"));
         assert!(report.contains("cancel · OMC cancel guidance"));
-        assert!(report.contains("statusline · Claude config skill guidance"));
-        assert!(report.contains("doctor-check · Claude config command guidance · legacy /commands"));
+        assert!(report.contains("statusline · Config skill guidance"));
+        assert!(report.contains("doctor-check · Config command guidance"));
         assert!(report.contains("learned · Learned skill guidance"));
 
         let help =
@@ -5562,13 +5562,13 @@ mod tests {
         assert!(sources.iter().any(|value| value == "~/.omc/skills"));
         assert!(sources
             .iter()
-            .any(|value| value == "~/.claude/skills/omc-learned"));
+            .any(|value| value == "~/.anvil/skills/learned"));
 
         restore_env_var("HOME", original_home);
-        restore_env_var("CLAUDE_CONFIG_DIR", original_claude_config_dir);
+        restore_env_var("ANVIL_CONFIG_DIR", original_anvil_config_dir);
         let _ = fs::remove_dir_all(workspace);
         let _ = fs::remove_dir_all(user_home);
-        let _ = fs::remove_dir_all(claude_config_dir);
+        let _ = fs::remove_dir_all(anvil_config_dir);
     }
 
     #[test]

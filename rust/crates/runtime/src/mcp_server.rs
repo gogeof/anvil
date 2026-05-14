@@ -3,7 +3,7 @@
 //! Implements a newline-safe, LSP-framed JSON-RPC server over stdio that
 //! answers `initialize`, `tools/list`, and `tools/call` requests. The framing
 //! matches the client transport implemented in [`crate::mcp_stdio`] so this
-//! server can be driven by either an external MCP client (e.g. Claude
+//! server can be driven by either an external MCP client (e.g. an external
 //! Desktop) or `claw`'s own [`McpServerManager`](crate::McpServerManager).
 //!
 //! The server is intentionally small: it exposes a list of pre-built

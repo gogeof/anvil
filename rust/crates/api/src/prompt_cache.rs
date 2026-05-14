@@ -472,11 +472,11 @@ fn base_cache_root() -> PathBuf {
     }
     if let Some(home) = std::env::var_os("HOME") {
         return PathBuf::from(home)
-            .join(".claude")
+            .join(".anvil")
             .join("cache")
             .join("prompt-cache");
     }
-    std::env::temp_dir().join("claude-prompt-cache")
+    std::env::temp_dir().join("anvil-prompt-cache")
 }
 
 fn now_unix_secs() -> u64 {
@@ -697,7 +697,7 @@ mod tests {
 
     fn sample_request(text: &str) -> MessageRequest {
         MessageRequest {
-            model: "claude-3-7-sonnet-latest".to_string(),
+            model: "deepseek-v4-pro".to_string(),
             max_tokens: 64,
             messages: vec![InputMessage::user_text(text)],
             system: Some("system".to_string()),
@@ -720,7 +720,7 @@ mod tests {
             content: vec![OutputContentBlock::Text {
                 text: text.to_string(),
             }],
-            model: "claude-3-7-sonnet-latest".to_string(),
+            model: "deepseek-v4-pro".to_string(),
             stop_reason: Some("end_turn".to_string()),
             stop_sequence: None,
             usage: Usage {

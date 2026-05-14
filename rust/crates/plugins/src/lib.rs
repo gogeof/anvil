@@ -21,7 +21,7 @@ const BUNDLED_MARKETPLACE: &str = "bundled";
 const SETTINGS_FILE_NAME: &str = "settings.json";
 const REGISTRY_FILE_NAME: &str = "installed.json";
 const MANIFEST_FILE_NAME: &str = "plugin.json";
-const MANIFEST_RELATIVE_PATH: &str = ".claude-plugin/plugin.json";
+const MANIFEST_RELATIVE_PATH: &str = ".anvil-plugin/plugin.json";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -1602,7 +1602,7 @@ fn load_manifest_from_path(
         ))
     })?;
     let raw_json: Value = serde_json::from_str(&contents)?;
-    let compatibility_errors = detect_claude_code_manifest_contract_gaps(&raw_json);
+    let compatibility_errors = detect_unsupported_manifest_contracts(&raw_json);
     if !compatibility_errors.is_empty() {
         return Err(PluginError::ManifestValidation(compatibility_errors));
     }
@@ -1610,7 +1610,7 @@ fn load_manifest_from_path(
     build_plugin_manifest(root, raw_manifest)
 }
 
-fn detect_claude_code_manifest_contract_gaps(
+fn detect_unsupported_manifest_contracts(
     raw_manifest: &Value,
 ) -> Vec<PluginManifestValidationError> {
     let Some(root) = raw_manifest.as_object() else {
@@ -2625,12 +2625,12 @@ mod tests {
     }
 
     #[test]
-    fn load_plugin_from_directory_rejects_claude_code_manifest_contracts_with_guidance() {
-        let root = temp_dir("manifest-claude-code-contract");
+    fn load_plugin_from_directory_rejects_unsupported_manifest_contracts() {
+        let root = temp_dir("manifest-unsupported-contract");
         write_file(
             root.join(MANIFEST_FILE_NAME).as_path(),
             r#"{
-  "name": "oh-my-claudecode",
+  "name": "anvil-plugin",
   "version": "4.10.2",
   "description": "Plugin manifest",
   "hooks": {

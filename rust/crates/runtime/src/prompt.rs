@@ -591,9 +591,9 @@ mod tests {
             .expect("write apps instructions");
         fs::write(
             root.join("apps").join(".anvil").join("instructions.md"),
-            "apps dot claude instructions",
+            "apps instructions",
         )
-        .expect("write apps dot claude instructions");
+        .expect("write apps instructions");
         fs::write(nested.join(".anvil").join("CLAUDE.md"), "nested rules")
             .expect("write nested rules");
         fs::write(
@@ -615,7 +615,7 @@ mod tests {
                 "root instructions",
                 "local instructions",
                 "apps instructions",
-                "apps dot claude instructions",
+                "apps instructions",
                 "nested rules",
                 "nested instructions"
             ]
@@ -815,7 +815,7 @@ mod tests {
     }
 
     #[test]
-    fn load_system_prompt_reads_claude_files_and_config() {
+    fn load_system_prompt_reads_instruction_files_and_config() {
         let root = temp_dir();
         fs::create_dir_all(root.join(".anvil")).expect("claw dir");
         fs::write(root.join("CLAUDE.md"), "Project rules").expect("write instructions");
@@ -864,7 +864,7 @@ mod tests {
     }
 
     #[test]
-    fn renders_default_claude_model_family_identity() {
+    fn renders_default_model_family_identity() {
         // given: a prompt builder without an explicit model family override
         let project_context = ProjectContext {
             cwd: PathBuf::from("/tmp/project"),
@@ -878,12 +878,12 @@ mod tests {
             .with_project_context(project_context)
             .render();
 
-        // then: the Claude model family label is preserved by default
+        // then: the model family label is preserved by default
         assert!(prompt.contains("Model family: Anvil"));
     }
 
     #[test]
-    fn renders_generic_model_family_identity_without_claude_label() {
+    fn renders_generic_model_family_identity() {
         // given: a prompt builder with generic model family identity
         let project_context = ProjectContext {
             cwd: PathBuf::from("/tmp/project"),
@@ -908,7 +908,7 @@ mod tests {
     }
 
     #[test]
-    fn renders_claude_code_style_sections_with_project_context() {
+    fn renders_project_context_sections() {
         let root = temp_dir();
         fs::create_dir_all(root.join(".anvil")).expect("claw dir");
         fs::write(root.join("CLAUDE.md"), "Project rules").expect("write CLAUDE.md");
@@ -949,7 +949,7 @@ mod tests {
     }
 
     #[test]
-    fn discovers_dot_claude_instructions_markdown() {
+    fn discovers_instructions_markdown() {
         let root = temp_dir();
         let nested = root.join("apps").join("api");
         fs::create_dir_all(nested.join(".anvil")).expect("nested claw dir");

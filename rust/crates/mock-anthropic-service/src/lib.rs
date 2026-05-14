@@ -11,7 +11,7 @@ use tokio::sync::{oneshot, Mutex};
 use tokio::task::JoinHandle;
 
 pub const SCENARIO_PREFIX: &str = "PARITY_SCENARIO:";
-pub const DEFAULT_MODEL: &str = "claude-sonnet-4-6";
+pub const DEFAULT_MODEL: &str = "deepseek-v4-pro";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CapturedRequest {
@@ -23,14 +23,14 @@ pub struct CapturedRequest {
     pub raw_body: String,
 }
 
-pub struct MockAnthropicService {
+pub struct MockAPIService {
     base_url: String,
     requests: Arc<Mutex<Vec<CapturedRequest>>>,
     shutdown: Option<oneshot::Sender<()>>,
     join_handle: JoinHandle<()>,
 }
 
-impl MockAnthropicService {
+impl MockAPIService {
     pub async fn spawn() -> io::Result<Self> {
         Self::spawn_on("127.0.0.1:0").await
     }
@@ -77,7 +77,7 @@ impl MockAnthropicService {
     }
 }
 
-impl Drop for MockAnthropicService {
+impl Drop for MockAPIService {
     fn drop(&mut self) {
         if let Some(shutdown) = self.shutdown.take() {
             let _ = shutdown.send(());

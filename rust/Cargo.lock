@@ -30,6 +30,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "940b3a0ca603d1eade50a4846a2afffd5ef57a9feac2c0e2ec2e14f9ead76000"
 
 [[package]]
+name = "anvil-cli"
+version = "0.1.0"
+dependencies = [
+ "api",
+ "commands",
+ "compat-harness",
+ "crossterm",
+ "mock-anthropic-service",
+ "plugins",
+ "pulldown-cmark",
+ "runtime",
+ "rustyline",
+ "serde",
+ "serde_json",
+ "syntect",
+ "tokio",
+ "tools",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1587,26 +1607,6 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
-
-[[package]]
-name = "rusty-claude-cli"
-version = "0.1.0"
-dependencies = [
- "api",
- "commands",
- "compat-harness",
- "crossterm",
- "mock-anthropic-service",
- "plugins",
- "pulldown-cmark",
- "runtime",
- "rustyline",
- "serde",
- "serde_json",
- "syntect",
- "tokio",
- "tools",
-]
 
 [[package]]
 name = "rustyline"

@@ -1,6 +1,6 @@
 use crate::error::ApiError;
 use crate::prompt_cache::{PromptCache, PromptCacheRecord, PromptCacheStats};
-use crate::providers::anthropic::{self, AnthropicClient, AuthSource};
+use crate::providers::anthropic::{self, APIClient, AuthSource};
 use crate::providers::openai_compat::{self, OpenAiCompatClient, OpenAiCompatConfig};
 use crate::providers::{self, ProviderKind};
 use crate::types::{MessageRequest, MessageResponse, StreamEvent};
@@ -8,7 +8,7 @@ use crate::types::{MessageRequest, MessageResponse, StreamEvent};
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum ProviderClient {
-    Anthropic(AnthropicClient),
+    API(APIClient),
     Xai(OpenAiCompatClient),
     OpenAi(OpenAiCompatClient),
     DeepSeek(OpenAiCompatClient),
@@ -27,9 +27,9 @@ impl ProviderClient {
     ) -> Result<Self, ApiError> {
         let resolved_model = providers::resolve_model_alias(model);
         match providers::detect_provider_kind(&resolved_model) {
-            ProviderKind::Anthropic => Ok(Self::Anthropic(match anthropic_auth {
-                Some(auth) => AnthropicClient::from_auth(auth),
-                None => AnthropicClient::from_env()?,
+            ProviderKind::Anthropic => Ok(Self::API(match anthropic_auth {
+                Some(auth) => APIClient::from_auth(auth),
+                None => APIClient::from_env()?,
             })),
             ProviderKind::Xai => Ok(Self::Xai(OpenAiCompatClient::from_env(
                 OpenAiCompatConfig::xai(),
@@ -61,7 +61,7 @@ impl ProviderClient {
     #[must_use]
     pub const fn provider_kind(&self) -> ProviderKind {
         match self {
-            Self::Anthropic(_) => ProviderKind::Anthropic,
+            Self::API(_) => ProviderKind::Anthropic,
             Self::Xai(_) => ProviderKind::Xai,
             Self::OpenAi(_) => ProviderKind::OpenAi,
             Self::DeepSeek(_) => ProviderKind::DeepSeek,
@@ -73,7 +73,7 @@ impl ProviderClient {
     #[must_use]
     pub fn with_prompt_cache(self, prompt_cache: PromptCache) -> Self {
         match self {
-            Self::Anthropic(client) => Self::Anthropic(client.with_prompt_cache(prompt_cache)),
+            Self::API(client) => Self::API(client.with_prompt_cache(prompt_cache)),
             other => other,
         }
     }
@@ -81,7 +81,7 @@ impl ProviderClient {
     #[must_use]
     pub fn prompt_cache_stats(&self) -> Option<PromptCacheStats> {
         match self {
-            Self::Anthropic(client) => client.prompt_cache_stats(),
+            Self::API(client) => client.prompt_cache_stats(),
             Self::Xai(_) | Self::OpenAi(_) | Self::DeepSeek(_) | Self::OpenRouter(_) | Self::Together(_) => None,
         }
     }
@@ -89,7 +89,7 @@ impl ProviderClient {
     #[must_use]
     pub fn take_last_prompt_cache_record(&self) -> Option<PromptCacheRecord> {
         match self {
-            Self::Anthropic(client) => client.take_last_prompt_cache_record(),
+            Self::API(client) => client.take_last_prompt_cache_record(),
             Self::Xai(_) | Self::OpenAi(_) | Self::DeepSeek(_) | Self::OpenRouter(_) | Self::Together(_) => None,
         }
     }
@@ -99,7 +99,7 @@ impl ProviderClient {
         request: &MessageRequest,
     ) -> Result<MessageResponse, ApiError> {
         match self {
-            Self::Anthropic(client) => client.send_message(request).await,
+            Self::API(client) => client.send_message(request).await,
             Self::Xai(client) | Self::OpenAi(client) | Self::DeepSeek(client) | Self::OpenRouter(client) | Self::Together(client) => {
                 client.send_message(request).await
             }
@@ -111,10 +111,10 @@ impl ProviderClient {
         request: &MessageRequest,
     ) -> Result<MessageStream, ApiError> {
         match self {
-            Self::Anthropic(client) => client
+            Self::API(client) => client
                 .stream_message(request)
                 .await
-                .map(MessageStream::Anthropic),
+                .map(MessageStream::API),
             Self::Xai(client) | Self::OpenAi(client) | Self::DeepSeek(client) | Self::OpenRouter(client) | Self::Together(client) => client
                 .stream_message(request)
                 .await
@@ -125,7 +125,7 @@ impl ProviderClient {
 
 #[derive(Debug)]
 pub enum MessageStream {
-    Anthropic(anthropic::MessageStream),
+    API(anthropic::MessageStream),
     OpenAiCompat(openai_compat::MessageStream),
 }
 
@@ -133,14 +133,14 @@ impl MessageStream {
     #[must_use]
     pub fn request_id(&self) -> Option<&str> {
         match self {
-            Self::Anthropic(stream) => stream.request_id(),
+            Self::API(stream) => stream.request_id(),
             Self::OpenAiCompat(stream) => stream.request_id(),
         }
     }
 
     pub async fn next_event(&mut self) -> Result<Option<StreamEvent>, ApiError> {
         match self {
-            Self::Anthropic(stream) => stream.next_event().await,
+            Self::API(stream) => stream.next_event().await,
             Self::OpenAiCompat(stream) => stream.next_event().await,
         }
     }
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn resolves_existing_and_grok_aliases() {
-        assert_eq!(resolve_model_alias("opus"), "claude-opus-4-6");
+        assert_eq!(resolve_model_alias("opus"), "deepseek-v4-pro");
         assert_eq!(resolve_model_alias("grok"), "grok-3");
         assert_eq!(resolve_model_alias("grok-mini"), "grok-3-mini");
     }
@@ -187,7 +187,7 @@ mod tests {
     fn provider_detection_prefers_model_family() {
         assert_eq!(detect_provider_kind("grok-3"), ProviderKind::Xai);
         assert_eq!(
-            detect_provider_kind("claude-sonnet-4-6"),
+            detect_provider_kind("deepseek-v4-pro"),
             ProviderKind::Anthropic
         );
     }

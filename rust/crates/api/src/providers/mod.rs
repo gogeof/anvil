@@ -202,9 +202,9 @@ pub fn resolve_model_alias(model: &str) -> String {
         .find_map(|(alias, metadata)| {
             (*alias == lower).then_some(match metadata.provider {
                 ProviderKind::Anthropic => match *alias {
-                    "opus" => "claude-opus-4-6",
-                    "sonnet" => "claude-sonnet-4-6",
-                    "haiku" => "claude-haiku-4-5-20251213",
+                    "opus" => "deepseek-v4-pro",
+                    "sonnet" => "deepseek-v4-pro",
+                    "haiku" => "deepseek-v4-flash",
                     _ => trimmed,
                 },
                 ProviderKind::Xai => match *alias {
@@ -233,7 +233,7 @@ pub fn resolve_model_alias(model: &str) -> String {
 #[must_use]
 pub fn metadata_for_model(model: &str) -> Option<ProviderMetadata> {
     let canonical = resolve_model_alias(model);
-    if canonical.starts_with("claude") {
+    if canonical.starts_with("deepseek") {
         return Some(ProviderMetadata {
             provider: ProviderKind::Anthropic,
             auth_env: "ANTHROPIC_API_KEY",
@@ -252,7 +252,7 @@ pub fn metadata_for_model(model: &str) -> Option<ProviderMetadata> {
     // Explicit provider-namespaced models (e.g. "openai/gpt-4.1-mini") must
     // route to the correct provider regardless of which auth env vars are set.
     // Without this, detect_provider_kind falls through to the auth-sniffer
-    // order and misroutes to Anthropic if ANTHROPIC_API_KEY is present.
+    // order and misroutes to API if ANTHROPIC_API_KEY is present.
     if canonical.starts_with("openai/") || canonical.starts_with("gpt-") {
         return Some(ProviderMetadata {
             provider: ProviderKind::OpenAi,
@@ -328,7 +328,7 @@ pub fn detect_provider_kind(model: &str) -> ProviderKind {
         return metadata.provider;
     }
     // When OPENAI_BASE_URL is set, the user explicitly configured an
-    // OpenAI-compatible endpoint. Prefer it over the Anthropic fallback
+    // OpenAI-compatible endpoint. Prefer it over the API fallback
     // even when the model name has no recognized prefix — this is the
     // common case for local providers (Ollama, LM Studio, vLLM, etc.)
     // where model names like "qwen2.5-coder:7b" don't match any prefix.
@@ -406,11 +406,11 @@ pub fn model_token_limit(model: &str) -> Option<ModelTokenLimit> {
     let canonical = resolve_model_alias(model);
     let base_model = canonical.rsplit('/').next().unwrap_or(canonical.as_str());
     match base_model {
-        "claude-opus-4-6" => Some(ModelTokenLimit {
+        "deepseek-v4-pro" => Some(ModelTokenLimit {
             max_output_tokens: 32_000,
             context_window_tokens: 200_000,
         }),
-        "claude-sonnet-4-6" | "claude-haiku-4-5-20251213" => Some(ModelTokenLimit {
+        "deepseek-v4-pro" | "deepseek-v4-flash" => Some(ModelTokenLimit {
             max_output_tokens: 64_000,
             context_window_tokens: 200_000,
         }),
@@ -494,7 +494,7 @@ fn estimate_serialized_tokens<T: Serialize>(value: &T) -> u32 {
         .map_or(0, |bytes| (bytes.len() / 4 + 1) as u32)
 }
 
-/// Env var names used by other provider backends. When Anthropic auth
+/// Env var names used by other provider backends. When API auth
 /// resolution fails we sniff these so we can hint the user that their
 /// credentials probably belong to a different provider and suggest the
 /// model-prefix routing fix that would select it.
@@ -536,7 +536,7 @@ fn env_or_dotenv_present(key: &str) -> bool {
 }
 
 /// Produce a hint string describing the first foreign provider credential
-/// that is present in the environment when Anthropic auth resolution has
+/// that is present in the environment when API auth resolution has
 /// just failed. Returns `None` when no foreign credential is set, in which
 /// case the caller should fall back to the plain `missing_credentials`
 /// error without a hint.
@@ -551,14 +551,14 @@ pub(crate) fn anthropic_missing_credentials_hint() -> Option<String> {
     None
 }
 
-/// Build an Anthropic-specific `MissingCredentials` error, attaching a
+/// Build an API-specific `MissingCredentials` error, attaching a
 /// hint suggesting the probable fix whenever a different provider's
-/// credentials are already present in the environment. Anthropic call
+/// credentials are already present in the environment. API call
 /// sites should prefer this helper over `ApiError::missing_credentials`
 /// so users who mistyped a model name or forgot the prefix get a useful
-/// signal instead of a generic "missing Anthropic credentials" wall.
+/// signal instead of a generic "missing API credentials" wall.
 pub(crate) fn anthropic_missing_credentials() -> ApiError {
-    const PROVIDER: &str = "Anthropic";
+    const PROVIDER: &str = "API";
     const ENV_VARS: &[&str] = &["ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"];
     match anthropic_missing_credentials_hint() {
         Some(hint) => ApiError::missing_credentials_with_hint(PROVIDER, ENV_VARS, hint),
@@ -691,7 +691,7 @@ mod tests {
     fn detects_provider_from_model_name_first() {
         assert_eq!(detect_provider_kind("grok"), ProviderKind::Xai);
         assert_eq!(
-            detect_provider_kind("claude-sonnet-4-6"),
+            detect_provider_kind("deepseek-v4-pro"),
             ProviderKind::Anthropic
         );
     }
@@ -708,7 +708,7 @@ mod tests {
         let openai_identity = model_family_identity_for_kind(openai);
         let xai_identity = model_family_identity_for_kind(xai);
 
-        // then: Anthropic stays Claude and OpenAI-compatible providers are generic
+        // then: API stays provider-agnostic and OpenAI-compatible providers are generic
         assert_eq!(anthropic_identity, runtime::ModelFamilyIdentity::Anvil);
         assert_eq!(openai_identity, runtime::ModelFamilyIdentity::Generic);
         assert_eq!(xai_identity, runtime::ModelFamilyIdentity::Generic);
@@ -716,25 +716,25 @@ mod tests {
 
     #[test]
     fn maps_model_name_to_model_family_identity() {
-        // given: Anthropic, OpenAI-compatible, and xAI model names
-        let claude_model = "claude-opus-4-6";
+        // given: API, OpenAI-compatible, and xAI model names
+        let anvil_model = "deepseek-v4-pro";
         let openai_model = "openai/gpt-4.1-mini";
         let xai_model = "grok-3";
 
         // when: detecting prompt model family identities from model names
-        let claude_identity = model_family_identity_for(claude_model);
+        let anvil_identity = model_family_identity_for(anvil_model);
         let openai_identity = model_family_identity_for(openai_model);
         let xai_identity = model_family_identity_for(xai_model);
 
-        // then: Anthropic stays Claude and OpenAI-compatible providers are generic
-        assert_eq!(claude_identity, runtime::ModelFamilyIdentity::Anvil);
+        // then: API stays provider-agnostic and OpenAI-compatible providers are generic
+        assert_eq!(anvil_identity, runtime::ModelFamilyIdentity::Anvil);
         assert_eq!(openai_identity, runtime::ModelFamilyIdentity::Generic);
         assert_eq!(xai_identity, runtime::ModelFamilyIdentity::Generic);
     }
 
     #[test]
     fn openai_namespaced_model_routes_to_openai_not_anthropic() {
-        // Regression: "openai/gpt-4.1-mini" was misrouted to Anthropic when
+        // Regression: "openai/gpt-4.1-mini" was misrouted to API when
         // ANTHROPIC_API_KEY was set because metadata_for_model returned None
         // and detect_provider_kind fell through to auth-sniffer order.
         // The model prefix must win over env-var presence.
@@ -854,12 +854,12 @@ mod tests {
             .load()
             .expect("config should load");
         let plugin_override = loaded.plugins().max_output_tokens();
-        let effective = max_tokens_for_model_with_override("claude-opus-4-6", plugin_override);
+        let effective = max_tokens_for_model_with_override("deepseek-v4-pro", plugin_override);
 
         // then
         assert_eq!(plugin_override, Some(12345));
         assert_eq!(effective, 12345);
-        assert_ne!(effective, max_tokens_for_model("claude-opus-4-6"));
+        assert_ne!(effective, max_tokens_for_model("deepseek-v4-pro"));
 
         std::fs::remove_dir_all(root).expect("cleanup temp dir");
     }
@@ -870,18 +870,18 @@ mod tests {
         let plugin_override: Option<u32> = None;
 
         // when
-        let effective = max_tokens_for_model_with_override("claude-opus-4-6", plugin_override);
+        let effective = max_tokens_for_model_with_override("deepseek-v4-pro", plugin_override);
 
         // then
-        assert_eq!(effective, max_tokens_for_model("claude-opus-4-6"));
+        assert_eq!(effective, max_tokens_for_model("deepseek-v4-pro"));
         assert_eq!(effective, 32_000);
     }
 
     #[test]
     fn returns_context_window_metadata_for_supported_models() {
         assert_eq!(
-            model_token_limit("claude-sonnet-4-6")
-                .expect("claude-sonnet-4-6 should be registered")
+            model_token_limit("deepseek-v4-pro")
+                .expect("deepseek-v4-pro should be registered")
                 .context_window_tokens,
             200_000
         );
@@ -908,7 +908,7 @@ mod tests {
     #[test]
     fn preflight_blocks_requests_that_exceed_the_model_context_window() {
         let request = MessageRequest {
-            model: "claude-sonnet-4-6".to_string(),
+            model: "deepseek-v4-pro".to_string(),
             max_tokens: 64_000,
             messages: vec![InputMessage {
                 role: "user".to_string(),
@@ -941,7 +941,7 @@ mod tests {
                 estimated_total_tokens,
                 context_window_tokens,
             } => {
-                assert_eq!(model, "claude-sonnet-4-6");
+                assert_eq!(model, "deepseek-v4-pro");
                 assert!(estimated_input_tokens > 136_000);
                 assert_eq!(requested_output_tokens, 64_000);
                 assert!(estimated_total_tokens > context_window_tokens);
@@ -1299,7 +1299,7 @@ NO_EQUALS_LINE
                 env_vars,
                 hint,
             } => {
-                assert_eq!(*provider, "Anthropic");
+                assert_eq!(*provider, "API");
                 assert_eq!(*env_vars, &["ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"]);
                 assert!(
                     hint.is_none(),
@@ -1333,7 +1333,7 @@ NO_EQUALS_LINE
                 env_vars,
                 hint,
             } => {
-                assert_eq!(*provider, "Anthropic");
+                assert_eq!(*provider, "API");
                 assert_eq!(*env_vars, &["ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"]);
                 let hint_value = hint.as_deref().expect("hint should be populated");
                 assert!(
@@ -1345,7 +1345,7 @@ NO_EQUALS_LINE
         }
         let rendered = error.to_string();
         assert!(
-            rendered.starts_with("missing Anthropic credentials;"),
+            rendered.starts_with("missing API credentials;"),
             "canonical base message should still lead the rendered error: {rendered}"
         );
         assert!(
@@ -1378,7 +1378,7 @@ NO_EQUALS_LINE
 
     #[test]
     fn openai_base_url_overrides_anthropic_fallback_for_unknown_model() {
-        // given — user has OPENAI_BASE_URL + OPENAI_API_KEY but no Anthropic
+        // given — user has OPENAI_BASE_URL + OPENAI_API_KEY but no API
         // creds, and a model name with no recognized prefix.
         let _lock = env_lock();
         let _base_url = EnvVarGuard::set("OPENAI_BASE_URL", Some("http://127.0.0.1:11434/v1"));
@@ -1389,11 +1389,11 @@ NO_EQUALS_LINE
         // when
         let provider = detect_provider_kind("qwen2.5-coder:7b");
 
-        // then — should route to OpenAI, not Anthropic
+        // then — should route to OpenAI, not API
         assert_eq!(
             provider,
             ProviderKind::OpenAi,
-            "OPENAI_BASE_URL should win over Anthropic fallback for unknown models"
+            "OPENAI_BASE_URL should win over API fallback for unknown models"
         );
     }
 

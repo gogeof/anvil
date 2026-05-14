@@ -140,11 +140,11 @@ pub(crate) fn initialize_repo(cwd: &Path) -> Result<InitReport, Box<dyn std::err
         status: ensure_gitignore_entries(&gitignore)?,
     });
 
-    let claude_md = cwd.join("CLAUDE.md");
-    let content = render_init_claude_md(cwd);
+    let anvil_md = cwd.join("CLAUDE.md");
+    let content = render_init_project_config(cwd);
     artifacts.push(InitArtifact {
         name: "CLAUDE.md",
-        status: write_file_if_missing(&claude_md, &content)?,
+        status: write_file_if_missing(&anvil_md, &content)?,
     });
 
     Ok(InitReport {
@@ -201,7 +201,7 @@ fn ensure_gitignore_entries(path: &Path) -> Result<InitStatus, std::io::Error> {
     Ok(InitStatus::Updated)
 }
 
-pub(crate) fn render_init_claude_md(cwd: &Path) -> String {
+pub(crate) fn render_init_project_config(cwd: &Path) -> String {
     let detection = detect_repo(cwd);
     let mut lines = vec![
         "# CLAUDE.md".to_string(),
@@ -375,7 +375,7 @@ fn framework_notes(detection: &RepoDetection) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{initialize_repo, render_init_claude_md, InitStatus};
+    use super::{initialize_repo, render_init_project_config, InitStatus};
     use std::fs;
     use std::path::Path;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -385,7 +385,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("time should be after epoch")
             .as_nanos();
-        std::env::temp_dir().join(format!("rusty-claude-init-{nanos}"))
+        std::env::temp_dir().join(format!("anvil-init-{nanos}"))
     }
 
     #[test]
@@ -418,9 +418,9 @@ mod tests {
         assert!(gitignore.contains(".anvil/settings.local.json"));
         assert!(gitignore.contains(".anvil/sessions/"));
         assert!(gitignore.contains(".anvilhip/"));
-        let claude_md = fs::read_to_string(root.join("CLAUDE.md")).expect("read claude md");
-        assert!(claude_md.contains("Languages: Rust."));
-        assert!(claude_md.contains("cargo clippy --workspace --all-targets -- -D warnings"));
+        let anvil_md = fs::read_to_string(root.join("CLAUDE.md")).expect("read project config");
+        assert!(anvil_md.contains("Languages: Rust."));
+        assert!(anvil_md.contains("cargo clippy --workspace --all-targets -- -D warnings"));
 
         fs::remove_dir_all(root).expect("cleanup temp dir");
     }
@@ -429,7 +429,7 @@ mod tests {
     fn initialize_repo_is_idempotent_and_preserves_existing_files() {
         let root = temp_dir();
         fs::create_dir_all(&root).expect("create root");
-        fs::write(root.join("CLAUDE.md"), "custom guidance\n").expect("write existing claude md");
+        fs::write(root.join("CLAUDE.md"), "custom guidance\n").expect("write existing project config");
         fs::write(root.join(".gitignore"), ".anvil/settings.local.json\n").expect("write gitignore");
 
         let first = initialize_repo(&root).expect("first init should succeed");
@@ -444,7 +444,7 @@ mod tests {
         assert!(second_rendered.contains(".gitignore       skipped (already exists)"));
         assert!(second_rendered.contains("CLAUDE.md        skipped (already exists)"));
         assert_eq!(
-            fs::read_to_string(root.join("CLAUDE.md")).expect("read existing claude md"),
+            fs::read_to_string(root.join("CLAUDE.md")).expect("read existing project config"),
             "custom guidance\n"
         );
         let gitignore = fs::read_to_string(root.join(".gitignore")).expect("read gitignore");
@@ -524,7 +524,7 @@ mod tests {
         )
         .expect("write package json");
 
-        let rendered = render_init_claude_md(Path::new(&root));
+        let rendered = render_init_project_config(Path::new(&root));
         assert!(rendered.contains("Languages: Python, TypeScript."));
         assert!(rendered.contains("Frameworks/tooling markers: Next.js, React."));
         assert!(rendered.contains("pyproject.toml"));

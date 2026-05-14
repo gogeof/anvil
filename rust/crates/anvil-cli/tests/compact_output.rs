@@ -4,18 +4,18 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use mock_anthropic_service::{MockAnthropicService, SCENARIO_PREFIX};
+use mock_anthropic_service::{MockAPIService, SCENARIO_PREFIX};
 use serde_json::Value;
 
 static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn compact_flag_prints_only_final_assistant_text_without_tool_call_details() {
-    // given a workspace pointed at the mock Anthropic service and a fixture file
+    // given a workspace pointed at the mock API service and a fixture file
     // that the read_file_roundtrip scenario will fetch through a tool call
     let runtime = tokio::runtime::Runtime::new().expect("tokio runtime should build");
     let server = runtime
-        .block_on(MockAnthropicService::spawn())
+        .block_on(MockAPIService::spawn())
         .expect("mock service should start");
     let base_url = server.base_url();
 
@@ -78,11 +78,11 @@ fn compact_flag_prints_only_final_assistant_text_without_tool_call_details() {
 
 #[test]
 fn compact_flag_streaming_text_only_emits_final_message_text() {
-    // given a workspace pointed at the mock Anthropic service running the
+    // given a workspace pointed at the mock API service running the
     // streaming_text scenario which only emits a single assistant text block
     let runtime = tokio::runtime::Runtime::new().expect("tokio runtime should build");
     let server = runtime
-        .block_on(MockAnthropicService::spawn())
+        .block_on(MockAPIService::spawn())
         .expect("mock service should start");
     let base_url = server.base_url();
 
@@ -128,11 +128,11 @@ fn compact_flag_streaming_text_only_emits_final_message_text() {
 
 #[test]
 fn text_prompt_mode_prints_final_assistant_text_after_spinner() {
-    // given a workspace pointed at the mock Anthropic service running the
+    // given a workspace pointed at the mock API service running the
     // streaming_text scenario which only emits a single assistant text block
     let runtime = tokio::runtime::Runtime::new().expect("tokio runtime should build");
     let server = runtime
-        .block_on(MockAnthropicService::spawn())
+        .block_on(MockAPIService::spawn())
         .expect("mock service should start");
     let base_url = server.base_url();
 
@@ -190,7 +190,7 @@ fn text_prompt_mode_prints_final_assistant_text_after_spinner() {
 fn compact_flag_with_json_output_emits_structured_json() {
     let runtime = tokio::runtime::Runtime::new().expect("tokio runtime should build");
     let server = runtime
-        .block_on(MockAnthropicService::spawn())
+        .block_on(MockAPIService::spawn())
         .expect("mock service should start");
     let base_url = server.base_url();
 
@@ -237,7 +237,7 @@ stderr:
         "Mock streaming says hello from the parity harness."
     );
     assert_eq!(parsed["compact"], true);
-    assert_eq!(parsed["model"], "claude-sonnet-4-6");
+    assert_eq!(parsed["model"], "deepseek-v4-pro");
     assert!(parsed["usage"].is_object());
 
     fs::remove_dir_all(&workspace).expect("workspace cleanup should succeed");

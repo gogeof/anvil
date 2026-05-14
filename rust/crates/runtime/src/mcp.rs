@@ -1,6 +1,6 @@
 use crate::config::{McpServerConfig, ScopedMcpServerConfig};
 
-const CLAUDEAI_SERVER_PREFIX: &str = "claude.ai ";
+const ANVIL_AI_SERVER_PREFIX: &str = "anvil.ai ";
 const CCR_PROXY_PATH_MARKERS: [&str; 2] = ["/v2/session_ingress/shttp/mcp/", "/v2/ccr-sessions/"];
 
 #[must_use]
@@ -13,7 +13,7 @@ pub fn normalize_name_for_mcp(name: &str) -> String {
         })
         .collect::<String>();
 
-    if name.starts_with(CLAUDEAI_SERVER_PREFIX) {
+    if name.starts_with(ANVIL_AI_SERVER_PREFIX) {
         normalized = collapse_underscores(&normalized)
             .trim_matches('_')
             .to_string();
@@ -114,7 +114,7 @@ pub fn scoped_mcp_config_hash(config: &ScopedMcpServerConfig) -> String {
         ),
         McpServerConfig::Sdk(sdk) => format!("sdk|{}", sdk.name),
         McpServerConfig::ManagedProxy(proxy) => {
-            format!("claudeai-proxy|{}|{}", proxy.url, proxy.id)
+            format!("anvil-ai-proxy|{}|{}", proxy.url, proxy.id)
         }
     };
     stable_hex_hash(&rendered)
@@ -223,12 +223,12 @@ mod tests {
         assert_eq!(normalize_name_for_mcp("github.com"), "github_com");
         assert_eq!(normalize_name_for_mcp("tool name!"), "tool_name_");
         assert_eq!(
-            normalize_name_for_mcp("claude.ai Example   Server!!"),
-            "claude_ai_Example_Server"
+            normalize_name_for_mcp("anvil.example.server"),
+            "anvil_ai_Example_Server"
         );
         assert_eq!(
-            mcp_tool_name("claude.ai Example Server", "weather tool"),
-            "mcp__claude_ai_Example_Server__weather_tool"
+            mcp_tool_name("anvil.example.server", "weather tool"),
+            "mcp__anvil_example_server__weather_tool"
         );
     }
 

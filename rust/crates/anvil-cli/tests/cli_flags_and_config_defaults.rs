@@ -31,7 +31,7 @@ fn status_command_applies_model_and_permission_mode_flags() {
     assert_success(&output);
     let stdout = String::from_utf8(output.stdout).expect("stdout should be utf8");
     assert!(stdout.contains("Status"));
-    assert!(stdout.contains("Model            claude-sonnet-4-6"));
+    assert!(stdout.contains("Model            deepseek-v4-pro"));
     assert!(stdout.contains("Permission mode  read-only"));
 
     fs::remove_dir_all(temp_dir).expect("cleanup temp dir");
@@ -111,7 +111,7 @@ fn omc_namespaced_slash_commands_surface_a_targeted_compatibility_hint() {
 
     let output = Command::new(env!("CARGO_BIN_EXE_anvil"))
         .current_dir(&temp_dir)
-        .arg("/oh-my-claudecode:hud")
+        .arg("/anvil-plugin:hud")
         .output()
         .expect("claw should launch");
 
@@ -122,8 +122,8 @@ fn omc_namespaced_slash_commands_surface_a_targeted_compatibility_hint() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
-    assert!(stderr.contains("unknown slash command outside the REPL: /oh-my-claudecode:hud"));
-    assert!(stderr.contains("Claude Code/OMC plugin command"));
+    assert!(stderr.contains("unknown slash command outside the REPL: /anvil-plugin:hud"));
+    assert!(stderr.contains("Plugin command"));
     assert!(stderr.contains("does not yet load plugin slash commands"));
 
     fs::remove_dir_all(temp_dir).expect("cleanup temp dir");

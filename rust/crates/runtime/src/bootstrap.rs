@@ -21,7 +21,7 @@ pub struct BootstrapPlan {
 
 impl BootstrapPlan {
     #[must_use]
-    pub fn claude_code_default() -> Self {
+    pub fn default_bootstrap() -> Self {
         Self::from_phases(vec![
             BootstrapPhase::CliEntry,
             BootstrapPhase::FastPathVersion,
@@ -85,7 +85,7 @@ mod tests {
     }
 
     #[test]
-    fn claude_code_default_covers_each_phase_once() {
+    fn default_bootstrap_covers_each_phase_once() {
         // given
         let expected = [
             BootstrapPhase::CliEntry,
@@ -103,7 +103,7 @@ mod tests {
         ];
 
         // when
-        let plan = BootstrapPlan::claude_code_default();
+        let plan = BootstrapPlan::default_bootstrap();
 
         // then
         assert_eq!(plan.phases(), &expected);

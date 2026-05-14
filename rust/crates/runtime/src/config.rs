@@ -991,7 +991,7 @@ fn parse_mcp_server_config(
         "sdk" => Ok(McpServerConfig::Sdk(McpSdkServerConfig {
             name: expect_string(object, "name", context)?.to_string(),
         })),
-        "claudeai-proxy" => Ok(McpServerConfig::ManagedProxy(McpManagedProxyServerConfig {
+        "anvil-ai-proxy" => Ok(McpServerConfig::ManagedProxy(McpManagedProxyServerConfig {
             url: expect_string(object, "url", context)?.to_string(),
             id: expect_string(object, "id", context)?.to_string(),
         })),
@@ -1305,7 +1305,7 @@ mod tests {
     }
 
     #[test]
-    fn loads_and_merges_claude_code_config_files_by_precedence() {
+    fn loads_and_merges_config_files_by_precedence() {
         let root = temp_dir();
         let cwd = root.join("project");
         let home = root.join("home").join(".anvil");
@@ -1440,7 +1440,7 @@ mod tests {
             home.join("settings.json"),
             r#"{
               "providerFallbacks": {
-                "primary": "claude-opus-4-6",
+                "primary": "deepseek-v4-pro",
                 "fallbacks": ["grok-3", "grok-3-mini"]
               }
             }"#,
@@ -1454,7 +1454,7 @@ mod tests {
 
         // then
         let chain = loaded.provider_fallbacks();
-        assert_eq!(chain.primary(), Some("claude-opus-4-6"));
+        assert_eq!(chain.primary(), Some("deepseek-v4-pro"));
         assert_eq!(
             chain.fallbacks(),
             &["grok-3".to_string(), "grok-3-mini".to_string()]
@@ -1792,12 +1792,12 @@ mod tests {
 
         fs::write(
             home.join("settings.json"),
-            r#"{"aliases":{"fast":"claude-haiku-4-5-20251213","smart":"claude-opus-4-6"}}"#,
+            r#"{"aliases":{"fast":"deepseek-v4-flash","smart":"deepseek-v4-pro"}}"#,
         )
         .expect("write user settings");
         fs::write(
             cwd.join(".anvil").join("settings.local.json"),
-            r#"{"aliases":{"smart":"claude-sonnet-4-6","cheap":"grok-3-mini"}}"#,
+            r#"{"aliases":{"smart":"deepseek-v4-pro","cheap":"grok-3-mini"}}"#,
         )
         .expect("write local settings");
 
@@ -1810,11 +1810,11 @@ mod tests {
         let aliases = loaded.aliases();
         assert_eq!(
             aliases.get("fast").map(String::as_str),
-            Some("claude-haiku-4-5-20251213")
+            Some("deepseek-v4-flash")
         );
         assert_eq!(
             aliases.get("smart").map(String::as_str),
-            Some("claude-sonnet-4-6")
+            Some("deepseek-v4-pro")
         );
         assert_eq!(
             aliases.get("cheap").map(String::as_str),

@@ -318,7 +318,7 @@ mod tests {
             kind: "message".to_string(),
             role: "assistant".to_string(),
             content: Vec::new(),
-            model: "claude-sonnet-4-20250514".to_string(),
+            model: "deepseek-v4-pro".to_string(),
             stop_reason: Some("end_turn".to_string()),
             stop_sequence: None,
             usage: Usage {

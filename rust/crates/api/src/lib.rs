@@ -18,7 +18,7 @@ pub use prompt_cache::{
     CacheBreakEvent, PromptCache, PromptCacheConfig, PromptCachePaths, PromptCacheRecord,
     PromptCacheStats,
 };
-pub use providers::anthropic::{AnthropicClient, AnthropicClient as ApiClient, AuthSource};
+pub use providers::anthropic::{APIClient, APIClient as ApiClient, AuthSource};
 pub use providers::openai_compat::{
     build_chat_completion_request, flatten_tool_result_content, is_reasoning_model,
     model_rejects_is_error_field, model_requires_reasoning_content_in_history, translate_message,
@@ -38,7 +38,7 @@ pub use types::{
 };
 
 pub use telemetry::{
-    AnalyticsEvent, AnthropicRequestProfile, ClientIdentity, JsonlTelemetrySink,
+    AnalyticsEvent, APIRequestProfile, ClientIdentity, JsonlTelemetrySink,
     MemoryTelemetrySink, SessionTraceRecord, SessionTracer, TelemetryEvent, TelemetrySink,
     DEFAULT_ANTHROPIC_VERSION,
 };

@@ -399,7 +399,7 @@ mod tests {
         post_message: &str,
         failure_message: &str,
     ) {
-        fs::create_dir_all(root.join(".claude-plugin")).expect("manifest dir");
+        fs::create_dir_all(root.join(".anvil-plugin")).expect("manifest dir");
         fs::create_dir_all(root.join("hooks")).expect("hooks dir");
 
         let pre_path = root.join("hooks").join("pre.sh");
@@ -426,7 +426,7 @@ mod tests {
         .expect("write failure hook");
         make_executable(&failure_path);
         fs::write(
-            root.join(".claude-plugin").join("plugin.json"),
+            root.join(".anvil-plugin").join("plugin.json"),
             format!(
                 "{{\n  \"name\": \"{name}\",\n  \"version\": \"1.0.0\",\n  \"description\": \"hook plugin\",\n  \"hooks\": {{\n    \"PreToolUse\": [\"./hooks/pre.sh\"],\n    \"PostToolUse\": [\"./hooks/post.sh\"],\n    \"PostToolUseFailure\": [\"./hooks/failure.sh\"]\n  }}\n}}"
             ),

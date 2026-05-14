@@ -1,6 +1,6 @@
 use std::env;
 
-use mock_anthropic_service::MockAnthropicService;
+use mock_anthropic_service::MockAPIService;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let server = MockAnthropicService::spawn_on(&bind_addr).await?;
+    let server = MockAPIService::spawn_on(&bind_addr).await?;
     println!("MOCK_ANTHROPIC_BASE_URL={}", server.base_url());
     tokio::signal::ctrl_c().await?;
     drop(server);

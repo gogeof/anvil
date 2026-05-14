@@ -25,7 +25,7 @@ use std::time::{Duration, Instant, UNIX_EPOCH};
 
 use api::{
     detect_provider_kind, model_family_identity_for, model_token_limit,
-    resolve_startup_auth_source, AnthropicClient, AuthSource, ContentBlockDelta, InputContentBlock,
+    resolve_startup_auth_source, APIClient, AuthSource, ContentBlockDelta, InputContentBlock,
     InputMessage, MessageRequest, MessageResponse, ModelTokenLimit, OutputContentBlock,
     PromptCache, ProviderClient as ApiProviderClient, ProviderKind, StreamEvent as ApiStreamEvent,
     ToolChoice, ToolDefinition, ToolResultContentBlock,
@@ -250,7 +250,7 @@ Run `anvil --help` for usage."
 /// matching against the error messages produced throughout the CLI surface.
 fn classify_error_kind(message: &str) -> &'static str {
     // Check specific patterns first (more specific before generic)
-    if message.contains("missing Anthropic credentials") {
+    if message.contains("missing API credentials") {
         "missing_credentials"
     } else if message.contains("Manifest source files are missing") {
         "missing_manifests"
@@ -1158,8 +1158,8 @@ fn parse_args(args: &[String]) -> Result<CliAction, String> {
         // #145: `plugins` was routed through the prompt fallback because no
         // top-level parser arm produced CliAction::Plugins. That made `claw
         // plugins` (and `claw plugins --help`, `claw plugins list`, ...)
-        // attempt an Anthropic network call, surfacing the misleading error
-        // `missing Anthropic credentials` even though the command is purely
+        // attempt an API network call, surfacing the misleading error
+        // `missing API credentials` even though the command is purely
         // local introspection. Mirror `agents`/`mcp`/`skills`: action is the
         // first positional arg, target is the second.
         // `plugin` (singular) and `marketplace` are aliases for `plugins`.
@@ -1333,8 +1333,8 @@ fn parse_args(args: &[String]) -> Result<CliAction, String> {
             // #147: guard empty/whitespace-only prompts at the fallthrough
             // path the same way `"prompt"` arm above does. Without this,
             // `claw ""`, `claw "   "`, and `claw "" ""` silently route to
-            // the Anthropic call and surface a misleading
-            // `missing Anthropic credentials` error (or burn API tokens on
+            // the API call and surface a misleading
+            // `missing API credentials` error (or burn API tokens on
             // an empty prompt when credentials are present).
             let joined = rest.join(" ");
             if joined.trim().is_empty() {
@@ -1653,9 +1653,9 @@ fn format_unknown_slash_command(name: &str) -> String {
 }
 
 fn omc_compatibility_note_for_unknown_slash_command(name: &str) -> Option<&'static str> {
-    name.starts_with("oh-my-claudecode:")
+    name.starts_with("anvil-plugin:")
         .then_some(
-            "Compatibility note: `/oh-my-claudecode:*` is a Claude Code/OMC plugin command. `anvil` does not yet load plugin slash commands, Claude statusline stdin, or OMC session hooks.",
+            "Compatibility note: `/anvil-plugin:*` is a plugin command not yet supported by anvil. not yet load plugin slash commands, Claude statusline stdin, or OMC session hooks.",
         )
 }
 
@@ -1793,9 +1793,9 @@ fn levenshtein_distance(left: &str, right: &str) -> usize {
 
 fn resolve_model_alias(model: &str) -> &str {
     match model {
-        "opus" => "claude-opus-4-6",
-        "sonnet" => "claude-sonnet-4-6",
-        "haiku" => "claude-haiku-4-5-20251213",
+        "opus" => "deepseek-v4-pro",
+        "sonnet" => "deepseek-v4-pro",
+        "haiku" => "deepseek-v4-flash",
         _ => model,
     }
 }
@@ -1837,7 +1837,7 @@ fn validate_model_syntax(model: &str) -> Result<(), String> {
     if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
         // #154: hint if the model looks like it belongs to a different provider
         let mut err_msg = format!(
-            "invalid model syntax: '{}'. Expected provider/model (e.g., anthropic/claude-opus-4-6) or known alias (opus, sonnet, haiku, pro, lite)",
+            "invalid model syntax: '{}'. Expected provider/model (e.g., anthropic/deepseek-v4-pro) or known alias (opus, sonnet, haiku, pro, lite)",
             trimmed
         );
         if trimmed.starts_with("gpt-") || trimmed.starts_with("gpt_") {
@@ -1927,7 +1927,7 @@ fn permission_mode_from_resolved(mode: ResolvedPermissionMode) -> PermissionMode
 }
 
 fn default_permission_mode() -> PermissionMode {
-    env::var("RUSTY_CLAUDE_PERMISSION_MODE")
+    env::var("ANVIL_PERMISSION_MODE")
         .ok()
         .as_deref()
         .and_then(normalize_permission_mode)
@@ -2412,7 +2412,7 @@ fn run_auth_login(output_format: CliOutputFormat) -> Result<(), Box<dyn std::err
             }
 
             // Display instructions for manual OAuth setup
-            println!("To authenticate with Anthropic, you need to obtain an access token.");
+            println!("To authenticate with API, you need to obtain an access token.");
             println!();
             println!("1. Visit https://console.anthropic.com/settings/keys");
             println!("2. Create or copy your API key or OAuth token");
@@ -3054,7 +3054,7 @@ fn dump_manifests(
 }
 
 const DUMP_MANIFESTS_OVERRIDE_HINT: &str =
-    "Hint: set CLAUDE_CODE_UPSTREAM=/path/to/upstream or pass `anvil dump-manifests --manifests-dir /path/to/upstream`.";
+    "Hint: set ANVIL_COMPAT_UPSTREAM=/path/to/upstream or pass `anvil dump-manifests --manifests-dir /path/to/upstream`.";
 
 // Internal function for testing that accepts a workspace directory path.
 fn dump_manifests_at_path(
@@ -3130,7 +3130,7 @@ fn dump_manifests_at_path(
 }
 
 fn print_bootstrap_plan(output_format: CliOutputFormat) -> Result<(), Box<dyn std::error::Error>> {
-    let phases = runtime::BootstrapPlan::claude_code_default()
+    let phases = runtime::BootstrapPlan::default_bootstrap()
         .phases()
         .iter()
         .map(|phase| format!("{phase:?}"))
@@ -4047,7 +4047,7 @@ fn run_resume_command(
         SlashCommand::Context { .. } => {
             let usage = UsageTracker::from_session(session).cumulative_usage();
             let message_count = session.messages.len();
-            let model = session.model.as_deref().unwrap_or("claude-sonnet-4-6");
+            let model = session.model.as_deref().unwrap_or("deepseek-v4-pro");
             let limit = model_token_limit(model);
             let context_window_tokens = limit.map(|l| l.context_window_tokens).unwrap_or(200_000);
             Ok(ResumeCommandOutcome {
@@ -4661,7 +4661,7 @@ struct RuntimeMcpState {
 }
 
 struct BuiltRuntime {
-    runtime: Option<ConversationRuntime<AnthropicRuntimeClient, CliToolExecutor>>,
+    runtime: Option<ConversationRuntime<APIRuntimeClient, CliToolExecutor>>,
     plugin_registry: PluginRegistry,
     plugins_active: bool,
     mcp_state: Option<Arc<Mutex<RuntimeMcpState>>>,
@@ -4670,7 +4670,7 @@ struct BuiltRuntime {
 
 impl BuiltRuntime {
     fn new(
-        runtime: ConversationRuntime<AnthropicRuntimeClient, CliToolExecutor>,
+        runtime: ConversationRuntime<APIRuntimeClient, CliToolExecutor>,
         plugin_registry: PluginRegistry,
         mcp_state: Option<Arc<Mutex<RuntimeMcpState>>>,
     ) -> Self {
@@ -4715,7 +4715,7 @@ impl BuiltRuntime {
 }
 
 impl Deref for BuiltRuntime {
-    type Target = ConversationRuntime<AnthropicRuntimeClient, CliToolExecutor>;
+    type Target = ConversationRuntime<APIRuntimeClient, CliToolExecutor>;
 
     fn deref(&self) -> &Self::Target {
         self.runtime
@@ -5577,7 +5577,7 @@ impl LiveCli {
                 if let Some(desc) = description {
                     println!("Bug report: {desc}");
                 } else {
-                    println!("Bug report feature coming soon. Visit https://github.com/anthropics/claude-code/issues to report a bug.");
+                    println!("Bug report feature coming soon. Visit https://github.com/gogeof/anvil/issues to report a bug.");
                 }
                 false
             }
@@ -7047,7 +7047,7 @@ fn render_help_topic(topic: LocalHelpTopic) -> String {
             .to_string(),
         LocalHelpTopic::Auth => "Auth
   Usage            anvil auth <login|logout|status> [--output-format <format>]
-  Purpose          manage OAuth authentication for the Anthropic API
+  Purpose          manage OAuth authentication for the API API
   Actions          login — start OAuth device code flow
                    logout — clear saved credentials
                    status — show current authentication status
@@ -7351,7 +7351,7 @@ fn render_memory_report() -> Result<String, Box<dyn std::error::Error>> {
     if project_context.instruction_files.is_empty() {
         lines.push("Discovered files".to_string());
         lines.push(
-            "  No CLAUDE instruction files discovered in the current directory ancestry."
+            "  No instruction files discovered in the current directory ancestry."
                 .to_string(),
         );
     } else {
@@ -7399,7 +7399,7 @@ fn render_memory_json() -> Result<serde_json::Value, Box<dyn std::error::Error>>
     }))
 }
 
-fn init_claude_md() -> Result<String, Box<dyn std::error::Error>> {
+fn init_project_config() -> Result<String, Box<dyn std::error::Error>> {
     let cwd = env::current_dir()?;
     Ok(initialize_repo(&cwd)?.render())
 }
@@ -8669,7 +8669,7 @@ fn build_runtime_with_plugin_state(
         .map_err(std::io::Error::other)?;
     let mut runtime = ConversationRuntime::new_with_features(
         session,
-        AnthropicRuntimeClient::new(
+        APIRuntimeClient::new(
             session_id,
             model,
             enable_tools,
@@ -8781,13 +8781,13 @@ impl runtime::PermissionPrompter for CliPermissionPrompter {
     }
 }
 
-// NOTE: Despite the historical name `AnthropicRuntimeClient`, this struct
-// now holds an `ApiProviderClient` which dispatches to Anthropic, xAI,
+// NOTE: Despite the historical name `APIRuntimeClient`, this struct
+// now holds an `ApiProviderClient` which dispatches to API, xAI,
 // OpenAI, or DashScope at construction time based on
 // `detect_provider_kind(&model)`. The struct name is kept to avoid
 // churning `BuiltRuntime` and every Deref/DerefMut site that references
 // it. See ROADMAP #29 for the provider-dispatch routing fix.
-struct AnthropicRuntimeClient {
+struct APIRuntimeClient {
     runtime: tokio::runtime::Runtime,
     client: ApiProviderClient,
     session_id: String,
@@ -8801,7 +8801,7 @@ struct AnthropicRuntimeClient {
     fallback_model: Option<String>,
 }
 
-impl AnthropicRuntimeClient {
+impl APIRuntimeClient {
     fn new(
         session_id: &str,
         model: String,
@@ -8814,31 +8814,31 @@ impl AnthropicRuntimeClient {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         // Dispatch to the correct provider at construction time.
         // `ApiProviderClient` (exposed by the api crate as
-        // `ProviderClient`) is an enum over Anthropic / xAI / OpenAI
+        // `ProviderClient`) is an enum over API / xAI / OpenAI
         // variants, where xAI and OpenAI both use the OpenAI-compat
         // wire format under the hood. We consult
         // `detect_provider_kind(&resolved_model)` so model-name prefix
         // routing (`openai/`, `gpt-`, `grok`, `qwen/`) wins over
         // env-var presence.
         //
-        // For Anthropic we build the client directly instead of going
+        // For API we build the client directly instead of going
         // through `ApiProviderClient::from_model_with_anthropic_auth`
         // so we can explicitly apply `api::read_base_url()` — that
         // reads `ANTHROPIC_BASE_URL` and is required for the local
         // mock-server test harness
-        // (`crates/rusty-claude-cli/tests/compact_output.rs`) to point
-        // claw at its fake Anthropic endpoint. We also attach a
-        // session-scoped prompt cache on the Anthropic path; the
-        // prompt cache is Anthropic-only so non-Anthropic variants
+        // (`crates/anvil-cli/tests/compact_output.rs`) to point
+        // claw at its fake API endpoint. We also attach a
+        // session-scoped prompt cache on the API path; the
+        // prompt cache is API-only so non-API variants
         // skip it.
         let resolved_model = api::resolve_model_alias(&model);
         let client = match detect_provider_kind(&resolved_model) {
             ProviderKind::Anthropic => {
                 let auth = resolve_cli_auth_source()?;
-                let inner = AnthropicClient::from_auth(auth)
+                let inner = APIClient::from_auth(auth)
                     .with_base_url(api::read_base_url())
                     .with_prompt_cache(PromptCache::new(session_id));
-                ApiProviderClient::Anthropic(inner)
+                ApiProviderClient::API(inner)
             }
             ProviderKind::Xai | ProviderKind::OpenAi | ProviderKind::DeepSeek | ProviderKind::OpenRouter | ProviderKind::Together => {
                 // The api crate's `ProviderClient::from_model_with_anthropic_auth`
@@ -8882,7 +8882,7 @@ fn resolve_cli_auth_source_for_cwd() -> Result<AuthSource, api::ApiError> {
     resolve_startup_auth_source(|| Ok(None))
 }
 
-impl ApiClient for AnthropicRuntimeClient {
+impl ApiClient for APIRuntimeClient {
     #[allow(clippy::too_many_lines)]
     fn stream(&mut self, request: ApiRequest) -> Result<Vec<AssistantEvent>, RuntimeError> {
         if let Some(progress_reporter) = &self.progress_reporter {
@@ -8936,7 +8936,7 @@ impl ApiClient for AnthropicRuntimeClient {
     }
 }
 
-impl AnthropicRuntimeClient {
+impl APIRuntimeClient {
     /// Consume a single streaming response, optionally applying a stall
     /// timeout on the first event for post-tool continuations.
     #[allow(clippy::too_many_lines)]
@@ -10000,9 +10000,9 @@ fn response_to_events(
 
 fn push_prompt_cache_record(client: &ApiProviderClient, events: &mut Vec<AssistantEvent>) {
     // `ApiProviderClient::take_last_prompt_cache_record` is a pass-through
-    // to the Anthropic variant and returns `None` for OpenAI-compat /
+    // to the API variant and returns `None` for OpenAI-compat /
     // xAI variants, which do not have a prompt cache. So this helper
-    // remains a no-op on non-Anthropic providers without any extra
+    // remains a no-op on non-API providers without any extra
     // branching here.
     if let Some(record) = client.take_last_prompt_cache_record() {
         if let Some(event) = prompt_cache_record_to_runtime_event(record) {
@@ -10356,7 +10356,7 @@ fn print_help_to(out: &mut impl Write) -> io::Result<()> {
         "  Use /session list in the REPL to browse managed sessions"
     )?;
     writeln!(out, "Examples:")?;
-    writeln!(out, "  anvil --model claude-opus \"summarize this repo\"")?;
+    writeln!(out, "  anvil --model deepseek-pro \"summarize this repo\"")?;
     writeln!(
         out,
         "  anvil --output-format json prompt \"explain src/main.rs\""
@@ -10524,7 +10524,7 @@ mod tests {
     #[test]
     fn context_window_preflight_errors_render_recovery_steps() {
         let error = ApiError::ContextWindowExceeded {
-            model: "claude-sonnet-4-6".to_string(),
+            model: "deepseek-v4-pro".to_string(),
             estimated_input_tokens: 182_000,
             requested_output_tokens: 64_000,
             estimated_total_tokens: 246_000,
@@ -10539,7 +10539,7 @@ mod tests {
             "{rendered}"
         );
         assert!(
-            rendered.contains("Model            claude-sonnet-4-6"),
+            rendered.contains("Model            deepseek-v4-pro"),
             "{rendered}"
         );
         assert!(
@@ -10674,7 +10674,7 @@ mod tests {
             .expect("time should be after epoch")
             .as_nanos();
         let unique = COUNTER.fetch_add(1, Ordering::Relaxed);
-        std::env::temp_dir().join(format!("rusty-claude-cli-{nanos}-{unique}"))
+        std::env::temp_dir().join(format!("anvil-cli-{nanos}-{unique}"))
     }
 
     fn git(args: &[&str], cwd: &Path) {
@@ -10722,7 +10722,7 @@ mod tests {
     }
 
     fn write_plugin_fixture(root: &Path, name: &str, include_hooks: bool, include_lifecycle: bool) {
-        fs::create_dir_all(root.join(".claude-plugin")).expect("manifest dir");
+        fs::create_dir_all(root.join(".anvil-plugin")).expect("manifest dir");
         if include_hooks {
             fs::create_dir_all(root.join("hooks")).expect("hooks dir");
             fs::write(
@@ -10756,7 +10756,7 @@ mod tests {
             ""
         };
         fs::write(
-            root.join(".claude-plugin").join("plugin.json"),
+            root.join(".anvil-plugin").join("plugin.json"),
             format!(
                 "{{\n  \"name\": \"{name}\",\n  \"version\": \"1.0.0\",\n  \"description\": \"runtime plugin fixture\"{hooks}{lifecycle}\n}}"
             ),
@@ -10766,7 +10766,7 @@ mod tests {
     #[test]
     fn defaults_to_repl_when_no_args() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         assert_eq!(
             parse_args(&[]).expect("args should parse"),
             CliAction::Repl {
@@ -10801,9 +10801,9 @@ mod tests {
         .expect("project config should write");
 
         let original_config_home = std::env::var("ANVIL_CONFIG_HOME").ok();
-        let original_permission_mode = std::env::var("RUSTY_CLAUDE_PERMISSION_MODE").ok();
+        let original_permission_mode = std::env::var("ANVIL_PERMISSION_MODE").ok();
         std::env::set_var("ANVIL_CONFIG_HOME", &config_home);
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
 
         let resolved = with_current_dir(&cwd, super::default_permission_mode);
 
@@ -10812,8 +10812,8 @@ mod tests {
             None => std::env::remove_var("ANVIL_CONFIG_HOME"),
         }
         match original_permission_mode {
-            Some(value) => std::env::set_var("RUSTY_CLAUDE_PERMISSION_MODE", value),
-            None => std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE"),
+            Some(value) => std::env::set_var("ANVIL_PERMISSION_MODE", value),
+            None => std::env::remove_var("ANVIL_PERMISSION_MODE"),
         }
         std::fs::remove_dir_all(root).expect("temp config root should clean up");
 
@@ -10835,9 +10835,9 @@ mod tests {
         .expect("project config should write");
 
         let original_config_home = std::env::var("ANVIL_CONFIG_HOME").ok();
-        let original_permission_mode = std::env::var("RUSTY_CLAUDE_PERMISSION_MODE").ok();
+        let original_permission_mode = std::env::var("ANVIL_PERMISSION_MODE").ok();
         std::env::set_var("ANVIL_CONFIG_HOME", &config_home);
-        std::env::set_var("RUSTY_CLAUDE_PERMISSION_MODE", "read-only");
+        std::env::set_var("ANVIL_PERMISSION_MODE", "read-only");
 
         let resolved = with_current_dir(&cwd, super::default_permission_mode);
 
@@ -10846,8 +10846,8 @@ mod tests {
             None => std::env::remove_var("ANVIL_CONFIG_HOME"),
         }
         match original_permission_mode {
-            Some(value) => std::env::set_var("RUSTY_CLAUDE_PERMISSION_MODE", value),
-            None => std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE"),
+            Some(value) => std::env::set_var("ANVIL_PERMISSION_MODE", value),
+            None => std::env::remove_var("ANVIL_PERMISSION_MODE"),
         }
         std::fs::remove_dir_all(root).expect("temp config root should clean up");
 
@@ -10898,7 +10898,7 @@ mod tests {
     #[test]
     fn parses_prompt_subcommand() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec![
             "prompt".to_string(),
             "hello".to_string(),
@@ -10995,7 +10995,7 @@ mod tests {
     #[test]
     fn parses_bare_prompt_and_json_output_flag() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec![
             "--output-format=json".to_string(),
             "--model".to_string(),
@@ -11007,7 +11007,7 @@ mod tests {
             parse_args(&args).expect("args should parse"),
             CliAction::Prompt {
                 prompt: "explain this".to_string(),
-                model: "claude-opus-4-6".to_string(),
+                model: "deepseek-v4-pro".to_string(),
                 output_format: CliOutputFormat::Json,
                 allowed_tools: None,
                 permission_mode: PermissionMode::DangerFullAccess,
@@ -11031,7 +11031,7 @@ mod tests {
     fn parses_compact_flag_for_prompt_mode() {
         // given a bare prompt invocation that includes the --compact flag
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec![
             "--compact".to_string(),
             "summarize".to_string(),
@@ -11070,7 +11070,7 @@ mod tests {
     fn prompt_subcommand_defaults_compact_to_false() {
         // given a `prompt` subcommand invocation without --compact
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec!["prompt".to_string(), "hello".to_string()];
 
         // when parse_args runs
@@ -11086,7 +11086,7 @@ mod tests {
     #[test]
     fn resolves_model_aliases_in_args() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec![
             "--model".to_string(),
             "opus".to_string(),
@@ -11097,7 +11097,7 @@ mod tests {
             parse_args(&args).expect("args should parse"),
             CliAction::Prompt {
                 prompt: "explain this".to_string(),
-                model: "claude-opus-4-6".to_string(),
+                model: "deepseek-v4-pro".to_string(),
                 output_format: CliOutputFormat::Text,
                 allowed_tools: None,
                 permission_mode: PermissionMode::DangerFullAccess,
@@ -11119,10 +11119,10 @@ mod tests {
 
     #[test]
     fn resolves_known_model_aliases() {
-        assert_eq!(resolve_model_alias("opus"), "claude-opus-4-6");
-        assert_eq!(resolve_model_alias("sonnet"), "claude-sonnet-4-6");
-        assert_eq!(resolve_model_alias("haiku"), "claude-haiku-4-5-20251213");
-        assert_eq!(resolve_model_alias("claude-opus"), "claude-opus");
+        assert_eq!(resolve_model_alias("opus"), "deepseek-v4-pro");
+        assert_eq!(resolve_model_alias("sonnet"), "deepseek-v4-pro");
+        assert_eq!(resolve_model_alias("haiku"), "deepseek-v4-flash");
+        assert_eq!(resolve_model_alias("deepseek-pro"), "deepseek-pro");
     }
 
     #[test]
@@ -11136,7 +11136,7 @@ mod tests {
         std::fs::create_dir_all(&config_home).expect("config home should exist");
         std::fs::write(
             cwd.join(".claw").join("settings.json"),
-            r#"{"aliases":{"fast":"claude-haiku-4-5-20251213","smart":"opus","cheap":"grok-3-mini"}}"#,
+            r#"{"aliases":{"fast":"deepseek-v4-flash","smart":"opus","cheap":"grok-3-mini"}}"#,
         )
         .expect("project config should write");
 
@@ -11157,11 +11157,11 @@ mod tests {
         std::fs::remove_dir_all(root).expect("temp config root should clean up");
 
         // then
-        assert_eq!(direct, "claude-haiku-4-5-20251213");
-        assert_eq!(chained, "claude-opus-4-6");
+        assert_eq!(direct, "deepseek-v4-flash");
+        assert_eq!(chained, "deepseek-v4-pro");
         assert_eq!(cross_provider, "grok-3-mini");
         assert_eq!(unknown, "unknown-model");
-        assert_eq!(builtin, "claude-haiku-4-5-20251213");
+        assert_eq!(builtin, "deepseek-v4-flash");
     }
 
     #[test]
@@ -11205,10 +11205,10 @@ mod tests {
     #[test]
     fn dangerously_skip_permissions_flag_forces_danger_full_access_in_repl() {
         let _guard = env_lock();
-        std::env::set_var("RUSTY_CLAUDE_PERMISSION_MODE", "read-only");
+        std::env::set_var("ANVIL_PERMISSION_MODE", "read-only");
         let args = vec!["--dangerously-skip-permissions".to_string()];
         let parsed = parse_args(&args).expect("args should parse");
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
 
         assert_eq!(
             parsed,
@@ -11232,7 +11232,7 @@ mod tests {
     #[test]
     fn dangerously_skip_permissions_flag_applies_to_prompt_subcommand() {
         let _guard = env_lock();
-        std::env::set_var("RUSTY_CLAUDE_PERMISSION_MODE", "read-only");
+        std::env::set_var("ANVIL_PERMISSION_MODE", "read-only");
         let args = vec![
             "--dangerously-skip-permissions".to_string(),
             "prompt".to_string(),
@@ -11241,7 +11241,7 @@ mod tests {
             "thing".to_string(),
         ];
         let parsed = parse_args(&args).expect("args should parse");
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
 
         assert_eq!(
             parsed,
@@ -11270,7 +11270,7 @@ mod tests {
     #[test]
     fn parses_allowed_tools_flags_with_aliases_and_lists() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec![
             "--allowedTools".to_string(),
             "read,glob".to_string(),
@@ -11458,7 +11458,7 @@ mod tests {
             }
         );
         // #145: `plugins` must parse as CliAction::Plugins (not fall through
-        // to the prompt path, which would hit the Anthropic API for a purely
+        // to the prompt path, which would hit the API API for a purely
         // local introspection command).
         assert_eq!(
             parse_args(&["plugins".to_string()]).expect("plugins should parse"),
@@ -11552,7 +11552,7 @@ mod tests {
         );
         // #147: empty / whitespace-only positional args must be rejected
         // with a specific error instead of falling through to the prompt
-        // path (where they surface a misleading "missing Anthropic
+        // path (where they surface a misleading "missing API
         // credentials" error or burn API tokens on an empty prompt).
         let empty_err =
             parse_args(&["".to_string()]).expect_err("empty positional arg should be rejected");
@@ -11594,7 +11594,7 @@ mod tests {
                 model_flag_raw,
                 ..
             } => {
-                assert_eq!(model, "claude-sonnet-4-6", "sonnet alias should resolve");
+                assert_eq!(model, "deepseek-v4-pro", "sonnet alias should resolve");
                 assert_eq!(
                     model_flag_raw.as_deref(),
                     Some("sonnet"),
@@ -11605,7 +11605,7 @@ mod tests {
         }
         // --model= form should also capture raw.
         match parse_args(&[
-            "--model=anthropic/claude-opus-4-6".to_string(),
+            "--model=anthropic/deepseek-v4-pro".to_string(),
             "status".to_string(),
         ])
         .expect("--model=... status should parse")
@@ -11615,10 +11615,10 @@ mod tests {
                 model_flag_raw,
                 ..
             } => {
-                assert_eq!(model, "anthropic/claude-opus-4-6");
+                assert_eq!(model, "anthropic/deepseek-v4-pro");
                 assert_eq!(
                     model_flag_raw.as_deref(),
-                    Some("anthropic/claude-opus-4-6"),
+                    Some("anthropic/deepseek-v4-pro"),
                     "--model= form should also preserve raw input"
                 );
             }
@@ -12004,7 +12004,7 @@ mod tests {
     #[test]
     fn parses_single_word_command_aliases_without_falling_back_to_prompt_mode() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         assert_eq!(
             parse_args(&["help".to_string()]).expect("help should parse"),
             CliAction::Help {
@@ -12100,7 +12100,7 @@ mod tests {
     fn classify_error_kind_returns_correct_discriminants() {
         // #77: error kind classification for JSON error payloads
         assert_eq!(
-            classify_error_kind("missing Anthropic credentials; export ..."),
+            classify_error_kind("missing API credentials; export ..."),
             "missing_credentials"
         );
         assert_eq!(
@@ -12153,7 +12153,7 @@ mod tests {
     fn parses_bare_export_subcommand_targeting_latest_session() {
         // given
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec!["export".to_string()];
 
         // when
@@ -12454,7 +12454,7 @@ mod tests {
     #[test]
     fn multi_word_prompt_still_uses_shorthand_prompt_mode() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         // Input is ["--model", "opus", "please", "debug", "this"] so the joined
         // prompt shorthand must stay a normal multi-word prompt while still
         // honoring alias validation at parse time.
@@ -12469,7 +12469,7 @@ mod tests {
             .expect("prompt shorthand should still work"),
             CliAction::Prompt {
                 prompt: "please debug this".to_string(),
-                model: "claude-opus-4-6".to_string(),
+                model: "deepseek-v4-pro".to_string(),
                 output_format: CliOutputFormat::Text,
                 allowed_tools: None,
                 permission_mode: crate::default_permission_mode(),
@@ -12766,9 +12766,9 @@ mod tests {
 
     #[test]
     fn formats_namespaced_omc_slash_command_with_contract_guidance() {
-        let report = format_unknown_slash_command_message("oh-my-claudecode:hud");
-        assert!(report.contains("unknown slash command: /oh-my-claudecode:hud"));
-        assert!(report.contains("Claude Code/OMC plugin command"));
+        let report = format_unknown_slash_command_message("anvil-plugin:hud");
+        assert!(report.contains("unknown slash command: /anvil-plugin:hud"));
+        assert!(report.contains("Plugin command"));
         assert!(report.contains("plugin slash commands"));
         assert!(report.contains("statusline"));
         assert!(report.contains("session hooks"));
@@ -13004,7 +13004,7 @@ mod tests {
             vec!["session-old".to_string()],
         );
 
-        assert!(completions.contains(&"/model claude-sonnet-4-6".to_string()));
+        assert!(completions.contains(&"/model deepseek-v4-pro".to_string()));
         assert!(completions.contains(&"/permissions workspace-write".to_string()));
         assert!(completions.contains(&"/session list".to_string()));
         assert!(completions.contains(&"/session switch session-current".to_string()));
@@ -13017,14 +13017,14 @@ mod tests {
     #[test]
     fn startup_banner_mentions_workflow_completions() {
         let _guard = env_lock();
-        // Inject dummy credentials so LiveCli can construct without real Anthropic key
+        // Inject dummy credentials so LiveCli can construct without real API key
         std::env::set_var("ANTHROPIC_API_KEY", "test-dummy-key-for-banner-test");
         let root = temp_dir();
         fs::create_dir_all(&root).expect("root dir");
 
         let banner = with_current_dir(&root, || {
             LiveCli::new(
-                "claude-sonnet-4-6".to_string(),
+                "deepseek-v4-pro".to_string(),
                 true,
                 None,
                 PermissionMode::DangerFullAccess,
@@ -13046,12 +13046,12 @@ mod tests {
     }
 
     #[test]
-    fn format_connected_line_renders_anthropic_provider_for_claude_model() {
-        let model = "claude-sonnet-4-6";
+    fn format_connected_line_renders_provider_info() {
+        let model = "deepseek-v4-pro";
 
         let line = format_connected_line(model);
 
-        assert_eq!(line, "Connected: claude-sonnet-4-6 via anthropic");
+        assert_eq!(line, "Connected: deepseek-v4-pro via anthropic");
     }
 
     #[test]
@@ -13065,11 +13065,11 @@ mod tests {
 
     #[test]
     fn resolve_repl_model_returns_user_supplied_model_unchanged_when_explicit() {
-        let user_model = "claude-sonnet-4-6".to_string();
+        let user_model = "deepseek-v4-pro".to_string();
 
         let resolved = resolve_repl_model(user_model);
 
-        assert_eq!(resolved, "claude-sonnet-4-6");
+        assert_eq!(resolved, "deepseek-v4-pro");
     }
 
     #[test]
@@ -13085,7 +13085,7 @@ mod tests {
 
         let resolved = with_current_dir(&root, || resolve_repl_model(DEFAULT_MODEL.to_string()));
 
-        assert_eq!(resolved, "claude-sonnet-4-6");
+        assert_eq!(resolved, "deepseek-v4-pro");
 
         std::env::remove_var("ANTHROPIC_MODEL");
         std::env::remove_var("ANVIL_CONFIG_HOME");
@@ -13207,26 +13207,26 @@ mod tests {
 
     #[test]
     fn model_report_uses_sectioned_layout() {
-        let report = format_model_report("claude-sonnet", 12, 4);
+        let report = format_model_report("deepseek-pro", 12, 4);
         assert!(report.contains("Model"));
-        assert!(report.contains("Current model    claude-sonnet"));
+        assert!(report.contains("Current model    deepseek-pro"));
         assert!(report.contains("Session messages 12"));
         assert!(report.contains("Switch models with /model <name>"));
     }
 
     #[test]
     fn model_switch_report_preserves_context_summary() {
-        let report = format_model_switch_report("claude-sonnet", "claude-opus", 9);
+        let report = format_model_switch_report("deepseek-pro", "deepseek-pro", 9);
         assert!(report.contains("Model updated"));
-        assert!(report.contains("Previous         claude-sonnet"));
-        assert!(report.contains("Current          claude-opus"));
+        assert!(report.contains("Previous         deepseek-pro"));
+        assert!(report.contains("Current          deepseek-pro"));
         assert!(report.contains("Preserved msgs   9"));
     }
 
     #[test]
     fn status_line_reports_model_and_token_totals() {
         let status = format_status_report(
-            "claude-sonnet",
+            "deepseek-pro",
             StatusUsage {
                 message_count: 7,
                 turns: 3,
@@ -13274,7 +13274,7 @@ mod tests {
             None, // #148
         );
         assert!(status.contains("Status"));
-        assert!(status.contains("Model            claude-sonnet"));
+        assert!(status.contains("Model            deepseek-pro"));
         assert!(status.contains("Permission mode  workspace-write"));
         assert!(status.contains("Messages         7"));
         assert!(status.contains("Latest total     10"));
@@ -13330,7 +13330,7 @@ mod tests {
         fs::create_dir_all(&workspace).expect("workspace should create");
         git(&["init", "--quiet"], &workspace);
         git(&["config", "user.email", "tests@example.com"], &workspace);
-        git(&["config", "user.name", "Rusty Claude Tests"], &workspace);
+        git(&["config", "user.name", "Anvil Tests"], &workspace);
         fs::write(workspace.join("tracked.txt"), "hello\n").expect("write tracked");
         git(&["add", "tracked.txt"], &workspace);
         git(&["commit", "-m", "init", "--quiet"], &workspace);
@@ -13359,7 +13359,7 @@ mod tests {
         fs::create_dir_all(&workspace).expect("workspace should create");
         git(&["init", "--quiet"], &workspace);
         git(&["config", "user.email", "tests@example.com"], &workspace);
-        git(&["config", "user.name", "Rusty Claude Tests"], &workspace);
+        git(&["config", "user.name", "Anvil Tests"], &workspace);
         fs::write(workspace.join(".gitignore"), ".claw/\n").expect("write gitignore");
         fs::write(workspace.join("tracked.txt"), "hello\n").expect("write tracked");
         git(&["add", ".gitignore", "tracked.txt"], &workspace);
@@ -13408,7 +13408,7 @@ mod tests {
         };
 
         let value = status_json_value(
-            Some("claude-sonnet"),
+            Some("deepseek-pro"),
             StatusUsage {
                 message_count: 0,
                 turns: 0,
@@ -13585,7 +13585,7 @@ UU conflicted.rs",
         fs::create_dir_all(&root).expect("root dir");
         git(&["init", "--quiet"], &root);
         git(&["config", "user.email", "tests@example.com"], &root);
-        git(&["config", "user.name", "Rusty Claude Tests"], &root);
+        git(&["config", "user.name", "Anvil Tests"], &root);
         fs::write(root.join("tracked.txt"), "hello\n").expect("write file");
         git(&["add", "tracked.txt"], &root);
         git(&["commit", "-m", "init", "--quiet"], &root);
@@ -13603,7 +13603,7 @@ UU conflicted.rs",
         fs::create_dir_all(&root).expect("root dir");
         git(&["init", "--quiet"], &root);
         git(&["config", "user.email", "tests@example.com"], &root);
-        git(&["config", "user.name", "Rusty Claude Tests"], &root);
+        git(&["config", "user.name", "Anvil Tests"], &root);
         fs::write(root.join("tracked.txt"), "hello\n").expect("write file");
         git(&["add", "tracked.txt"], &root);
         git(&["commit", "-m", "init", "--quiet"], &root);
@@ -13628,7 +13628,7 @@ UU conflicted.rs",
         fs::create_dir_all(&root).expect("root dir");
         git(&["init", "--quiet"], &root);
         git(&["config", "user.email", "tests@example.com"], &root);
-        git(&["config", "user.name", "Rusty Claude Tests"], &root);
+        git(&["config", "user.name", "Anvil Tests"], &root);
         fs::write(root.join(".gitignore"), ".omx/\nignored.txt\n").expect("write gitignore");
         fs::write(root.join("tracked.txt"), "hello\n").expect("write tracked");
         git(&["add", ".gitignore", "tracked.txt"], &root);
@@ -13653,7 +13653,7 @@ UU conflicted.rs",
         fs::create_dir_all(&root).expect("root dir");
         git(&["init", "--quiet"], &root);
         git(&["config", "user.email", "tests@example.com"], &root);
-        git(&["config", "user.name", "Rusty Claude Tests"], &root);
+        git(&["config", "user.name", "Anvil Tests"], &root);
         fs::write(root.join("tracked.txt"), "hello\n").expect("write tracked");
         git(&["add", "tracked.txt"], &root);
         git(&["commit", "-m", "init", "--quiet"], &root);
@@ -13885,9 +13885,9 @@ UU conflicted.rs",
 
     #[test]
     fn unknown_omc_slash_command_guidance_explains_runtime_gap() {
-        let message = format_unknown_slash_command("oh-my-claudecode:hud");
-        assert!(message.contains("Unknown slash command: /oh-my-claudecode:hud"));
-        assert!(message.contains("Claude Code/OMC plugin command"));
+        let message = format_unknown_slash_command("anvil-plugin:hud");
+        assert!(message.contains("Unknown slash command: /anvil-plugin:hud"));
+        assert!(message.contains("Plugin command"));
         assert!(message.contains("does not yet load plugin slash commands"));
     }
 
@@ -13936,7 +13936,7 @@ UU conflicted.rs",
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let rendered = crate::init::render_init_claude_md(&workspace_root);
+        let rendered = crate::init::render_init_project_config(&workspace_root);
         assert!(rendered.contains("# CLAUDE.md"));
         assert!(rendered.contains("cargo clippy --workspace --all-targets -- -D warnings"));
     }
@@ -14246,7 +14246,7 @@ UU conflicted.rs",
             task_label: "ship plugin progress".to_string(),
             step: 3,
             phase: "running read_file".to_string(),
-            detail: Some("reading rust/crates/rusty-claude-cli/src/main.rs".to_string()),
+            detail: Some("reading rust/crates/anvil-cli/src/main.rs".to_string()),
             saw_final_text: false,
         };
 
@@ -14293,8 +14293,8 @@ UU conflicted.rs",
             "reading src/main.rs"
         );
         assert!(
-            describe_tool_progress("bash", r#"{"command":"cargo test -p rusty-claude-cli"}"#)
-                .contains("cargo test -p rusty-claude-cli")
+            describe_tool_progress("bash", r#"{"command":"cargo test -p anvil-cli"}"#)
+                .contains("cargo test -p anvil-cli")
         );
         assert_eq!(
             describe_tool_progress("grep_search", r#"{"pattern":"ultraplan","path":"rust"}"#),
@@ -14361,7 +14361,7 @@ UU conflicted.rs",
             MessageResponse {
                 id: "msg-1".to_string(),
                 kind: "message".to_string(),
-                model: "claude-opus-4-6".to_string(),
+                model: "deepseek-v4-pro".to_string(),
                 role: "assistant".to_string(),
                 content: vec![OutputContentBlock::ToolUse {
                     id: "tool-1".to_string(),
@@ -14396,7 +14396,7 @@ UU conflicted.rs",
             MessageResponse {
                 id: "msg-2".to_string(),
                 kind: "message".to_string(),
-                model: "claude-opus-4-6".to_string(),
+                model: "deepseek-v4-pro".to_string(),
                 role: "assistant".to_string(),
                 content: vec![OutputContentBlock::ToolUse {
                     id: "tool-2".to_string(),
@@ -14431,7 +14431,7 @@ UU conflicted.rs",
             MessageResponse {
                 id: "msg-3".to_string(),
                 kind: "message".to_string(),
-                model: "claude-opus-4-6".to_string(),
+                model: "deepseek-v4-pro".to_string(),
                 role: "assistant".to_string(),
                 content: vec![
                     OutputContentBlock::Thinking {
@@ -14826,7 +14826,7 @@ UU conflicted.rs",
     #[test]
     fn parses_json_schema_flag() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let schema = r#"{"type":"object","properties":{"name":{"type":"string"}}}"#;
         let args = vec![
             "--json-schema".to_string(),
@@ -14847,7 +14847,7 @@ UU conflicted.rs",
     #[test]
     fn parses_json_schema_equals_syntax() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let schema = r#"{"type":"array","items":{"type":"integer"}}"#;
         let args = vec![
             format!("--json-schema={schema}"),
@@ -14867,7 +14867,7 @@ UU conflicted.rs",
     #[test]
     fn rejects_invalid_json_schema() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec![
             "--json-schema".to_string(),
             "not valid json".to_string(),
@@ -14884,7 +14884,7 @@ UU conflicted.rs",
     #[test]
     fn stub_commands_absent_from_repl_completions() {
         let candidates =
-            slash_command_completion_candidates_with_sessions("claude-3-5-sonnet", None, vec![]);
+            slash_command_completion_candidates_with_sessions("deepseek-v4-pro", None, vec![]);
         for stub in STUB_COMMANDS {
             let with_slash = format!("/{stub}");
             assert!(
@@ -14923,7 +14923,7 @@ UU conflicted.rs",
     #[test]
     fn parses_fallback_model_flag() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec![
             "--fallback-model".to_string(),
             "opus".to_string(),
@@ -14943,7 +14943,7 @@ UU conflicted.rs",
     #[test]
     fn parses_fallback_model_equals_syntax() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec![
             "--fallback-model=sonnet".to_string(),
             "prompt".to_string(),
@@ -14962,7 +14962,7 @@ UU conflicted.rs",
     #[test]
     fn parses_bare_flag() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec![
             "--bare".to_string(),
             "prompt".to_string(),
@@ -14978,7 +14978,7 @@ UU conflicted.rs",
     #[test]
     fn bare_defaults_to_false() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec!["prompt".to_string(), "hello".to_string()];
         let result = parse_args(&args);
         assert!(result.is_ok(), "prompt should be accepted, got: {result:?}");
@@ -14990,7 +14990,7 @@ UU conflicted.rs",
     #[test]
     fn parses_from_pr_flag_with_number() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec!["--from-pr".to_string(), "123".to_string()];
         let result = parse_args(&args);
         assert!(
@@ -15005,7 +15005,7 @@ UU conflicted.rs",
     #[test]
     fn parses_from_pr_flag_with_equals() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec!["--from-pr=456".to_string()];
         let result = parse_args(&args);
         assert!(
@@ -15020,7 +15020,7 @@ UU conflicted.rs",
     #[test]
     fn parses_from_pr_flag_without_number() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args = vec!["--from-pr".to_string()];
         let result = parse_args(&args);
         assert!(
@@ -15039,7 +15039,7 @@ UU conflicted.rs",
     #[test]
     fn from_pr_defaults_to_none() {
         let _guard = env_lock();
-        std::env::remove_var("RUSTY_CLAUDE_PERMISSION_MODE");
+        std::env::remove_var("ANVIL_PERMISSION_MODE");
         let args: Vec<String> = vec![];
         let result = parse_args(&args);
         assert!(
@@ -15427,7 +15427,7 @@ mod dump_manifests_tests {
             "error message should mention missing commands.ts: {error_msg}"
         );
         assert!(
-            error_msg.contains("CLAUDE_CODE_UPSTREAM"),
+            error_msg.contains("ANVIL_COMPAT_UPSTREAM"),
             "error message should explain how to supply the upstream path: {error_msg}"
         );
 
