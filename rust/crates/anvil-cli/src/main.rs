@@ -2340,6 +2340,7 @@ fn render_doctor_report() -> Result<DoctorReport, Box<dyn std::error::Error>> {
         // Doctor path has its own config check; StatusContext here is only
         // fed into health renderers that don't read config_load_error.
         config_load_error: config.as_ref().err().map(ToString::to_string),
+        session_started_at_ms: None,
     };
     Ok(DoctorReport {
         checks: vec![
@@ -3382,6 +3383,9 @@ struct StatusContext {
     /// `status: "degraded"` so claws can distinguish "status ran but config
     /// is broken" from "status ran cleanly".
     config_load_error: Option<String>,
+    /// Timestamp (ms since epoch) when this session was created.
+    /// Used to display total session duration in the status report.
+    session_started_at_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -3982,7 +3986,7 @@ fn run_resume_command(
         SlashCommand::Status => {
             let tracker = UsageTracker::from_session(session);
             let usage = tracker.cumulative_usage();
-            let context = status_context(Some(session_path))?;
+            let context = status_context(Some(session_path), Some(session.created_at_ms))?;
             Ok(ResumeCommandOutcome {
                 session: session.clone(),
                 message: Some(format_status_report(
@@ -5177,7 +5181,7 @@ impl LiveCli {
             |_| "<unknown>".to_string(),
             |path| path.display().to_string(),
         );
-        let status = status_context(None).ok();
+        let status = status_context(None, None).ok();
         let git_branch = status
             .as_ref()
             .and_then(|context| context.git_branch.as_deref())
@@ -5621,7 +5625,11 @@ impl LiveCli {
                     estimated_tokens: self.runtime.estimated_tokens(),
                 },
                 self.permission_mode.as_str(),
-                &status_context(Some(&self.session.path)).expect("status context should load"),
+                &status_context(
+                    Some(&self.session.path),
+                    Some(self.runtime.session().created_at_ms),
+                )
+                .expect("status context should load"),
                 None, // #148: REPL /status doesn't carry flag provenance
             )
         );
@@ -6590,7 +6598,7 @@ fn print_status_snapshot(
         cumulative: TokenUsage::default(),
         estimated_tokens: 0,
     };
-    let context = status_context(None)?;
+    let context = status_context(None, None)?;
     // #148: resolve model provenance. If user passed --model, source is
     // "flag" with the raw input preserved. Otherwise probe env -> config
     // -> default and record the winning source.
@@ -6712,6 +6720,7 @@ fn status_json_value(
 
 fn status_context(
     session_path: Option<&Path>,
+    session_started_at_ms: Option<u64>,
 ) -> Result<StatusContext, Box<dyn std::error::Error>> {
     let cwd = env::current_dir()?;
     let loader = ConfigLoader::default_for(&cwd);
@@ -6754,6 +6763,7 @@ fn status_context(
         session_lifecycle: classify_session_lifecycle_for(&cwd),
         sandbox_status,
         config_load_error,
+        session_started_at_ms,
     })
 }
 
@@ -6793,14 +6803,61 @@ fn format_status_report(
             None => format!("\n  Model source     {}", p.source.as_str()),
         })
         .unwrap_or_default();
+
+    // Compute context window info
+    let context_window_line = match model_token_limit(model) {
+        Some(limit) => {
+            let max_tokens = limit.context_window_tokens;
+            let pct = if max_tokens > 0 {
+                (usage.estimated_tokens as u64 * 10000) / max_tokens as u64
+            } else {
+                0
+            };
+            let pct_whole = pct / 100;
+            let pct_frac = pct % 100;
+            format!(
+                "\n  Context window  {} tokens  |  Used: {} ({}.{:02}%)",
+                max_tokens,
+                usage.estimated_tokens,
+                pct_whole,
+                pct_frac,
+            )
+        }
+        None => String::new(),
+    };
+
+    // Compute session duration
+    let session_duration_line = match context.session_started_at_ms {
+        Some(start_ms) => {
+            let now_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .ok()
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            let elapsed_ms = now_ms.saturating_sub(start_ms);
+            let total_secs = elapsed_ms / 1000;
+            let hours = total_secs / 3600;
+            let minutes = (total_secs % 3600) / 60;
+            let seconds = total_secs % 60;
+            if hours > 0 {
+                format!("\n  Session uptime   {}h {}m {}s", hours, minutes, seconds)
+            } else if minutes > 0 {
+                format!("\n  Session uptime   {}m {}s", minutes, seconds)
+            } else {
+                format!("\n  Session uptime   {}s", seconds)
+            }
+        }
+        None => String::new(),
+    };
+
     blocks.extend([
         format!(
-            "{status_line}
-  Model            {model}{model_source_line}
-  Permission mode  {permission_mode}
-  Messages         {}
-  Turns            {}
-  Estimated tokens {}",
+            "{status_line}\n\
+  Model            {model}{model_source_line}\n\
+  Permission mode  {permission_mode}\n\
+  Messages         {}\n\
+  Turns            {}\n\
+  Estimated tokens {}{context_window_line}{session_duration_line}",
             usage.message_count, usage.turns, usage.estimated_tokens,
         ),
         format!(
@@ -11818,7 +11875,7 @@ mod tests {
         .expect("write malformed .claw.json");
 
         let context = with_current_dir(&cwd, || {
-            super::status_context(None)
+            super::status_context(None, None)
                 .expect("status_context should not hard-fail on config parse errors (#143)")
         });
 
@@ -11933,7 +11990,7 @@ mod tests {
         let clean_cwd = root.join("project-with-clean-config");
         std::fs::create_dir_all(&clean_cwd).expect("clean project dir");
         let clean_context = with_current_dir(&clean_cwd, || {
-            super::status_context(None).expect("clean status_context should succeed")
+            super::status_context(None, None).expect("clean status_context should succeed")
         });
         assert!(clean_context.config_load_error.is_none());
         let clean_json = super::status_json_value(
@@ -13266,6 +13323,7 @@ mod tests {
                 },
                 sandbox_status: runtime::SandboxStatus::default(),
                 config_load_error: None,
+                session_started_at_ms: None,
             },
             None, // #148
         );
@@ -13401,6 +13459,7 @@ mod tests {
             },
             sandbox_status: runtime::SandboxStatus::default(),
             config_load_error: None,
+            session_started_at_ms: None,
         };
 
         let value = status_json_value(
@@ -13673,7 +13732,7 @@ UU conflicted.rs",
 
     #[test]
     fn status_context_reads_real_workspace_metadata() {
-        let context = status_context(None).expect("status context should load");
+        let context = status_context(None, None).expect("status context should load");
         assert!(context.cwd.is_absolute());
         assert!(context.discovered_config_files >= context.loaded_config_files);
         assert!(context.loaded_config_files <= context.discovered_config_files);
