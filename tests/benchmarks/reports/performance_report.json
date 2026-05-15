@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-05-15 14:30:30 UTC",
+  "metrics": {
+    "search_memory": [
+      {
+        "pattern": "fn main",
+        "max_memory_mb": 2.23,
+        "status": "pass"
+      },
+      {
+        "pattern": "impl.*for",
+        "max_memory_mb": 1.92,
+        "status": "pass"
+      },
+      {
+        "pattern": "use std",
+        "max_memory_mb": 1.52,
+        "status": "pass"
+      }
+    ],
+    "large_file": [
+      {
+        "size_mb": 1,
+        "read_time_ms": 0.52,
+        "memory_mb": 1.28,
+        "status": "pass"
+      },
+      {
+        "size_mb": 5,
+        "read_time_ms": 2.14,
+        "memory_mb": 1.28,
+        "status": "pass"
+      },
+      {
+        "size_mb": 10,
+        "read_time_ms": 3.6,
+        "memory_mb": 1.28,
+        "status": "pass"
+      },
+      {
+        "size_mb": 20,
+        "read_time_ms": 10.16,
+        "memory_mb": 1.28,
+        "status": "check"
+      },
+      {
+        "size_mb": 50,
+        "read_time_ms": 19.56,
+        "memory_mb": 1.28,
+        "status": "check"
+      }
+    ],
+    "timeout": [
+      {
+        "command": "sleep 0.5",
+        "timeout": 1,
+        "elapsed_ms": 510.59,
+        "expected": "success",
+        "actual": "success",
+        "status": "pass"
+      },
+      {
+        "command": "sleep 5",
+        "timeout": 1,
+        "elapsed_ms": 1012.96,
+        "expected": "timeout",
+        "actual": "timeout",
+        "status": "pass"
+      }
+    ]
+  }
+}

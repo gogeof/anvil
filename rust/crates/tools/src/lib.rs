@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -2137,7 +2137,15 @@ fn run_edit_file(input: EditFileInput) -> Result<String, String> {
 
 #[allow(clippy::needless_pass_by_value)]
 fn run_glob_search(input: GlobSearchInputValue) -> Result<String, String> {
-    to_pretty_json(glob_search(&input.pattern, input.path.as_deref()).map_err(io_to_string)?)
+    let start_time = Instant::now();
+    let result = to_pretty_json(glob_search(&input.pattern, input.path.as_deref()).map_err(io_to_string)?);
+    let duration = start_time.elapsed();
+    let success = result.is_ok();
+    let mut context = HashMap::new();
+    context.insert("pattern".to_string(), serde_json::json!(&input.pattern));
+    context.insert("path".to_string(), serde_json::json!(&input.path));
+    Telemetry::new().record("glob_search", duration, success, context);
+    result
 }
 
 #[allow(clippy::needless_pass_by_value)]
