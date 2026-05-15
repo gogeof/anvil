@@ -1791,21 +1791,15 @@ fn levenshtein_distance(left: &str, right: &str) -> usize {
     previous[right_chars.len()]
 }
 
-fn resolve_model_alias(model: &str) -> &str {
-    match model {
-        _ => model,
-    }
-}
-
 /// Resolve a model name through user-defined config aliases first, then fall
 /// back to the built-in alias table. This is the entry point used wherever a
 /// user-supplied model string is about to be dispatched to a provider.
 fn resolve_model_alias_with_config(model: &str) -> String {
     let trimmed = model.trim();
     if let Some(resolved) = config_alias_for_current_dir(trimmed) {
-        return resolve_model_alias(&resolved).to_string();
+        return resolved.to_string();
     }
-    resolve_model_alias(trimmed).to_string()
+    trimmed.to_string()
 }
 
 /// Validate model syntax at parse time.
@@ -9760,7 +9754,7 @@ fn slash_command_completion_candidates_with_sessions(
     }
 
     if !model.trim().is_empty() {
-        completions.insert(format!("/model {}", resolve_model_alias(model)));
+        completions.insert(format!("/model {}", resolve_model_alias_with_config(model)));
         completions.insert(format!("/model {model}"));
     }
 
