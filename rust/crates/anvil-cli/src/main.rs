@@ -6504,7 +6504,9 @@ impl LiveCli {
     }
 
     fn compact(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let result = self.runtime.compact(CompactionConfig::default());
+        let model_name = &self.model;
+        let config = runtime::compact::CompactionConfig::for_model(model_name);
+        let result = self.runtime.compact(config);
         let removed = result.removed_message_count;
         let kept = result.compacted_session.messages.len();
         let skipped = removed == 0;

@@ -430,6 +430,26 @@ pub fn mvp_tool_specs() -> Vec<ToolSpec> {
             required_permission: PermissionMode::ReadOnly,
         },
         ToolSpec {
+            name: "read_function",
+            description: "Read a specific function from a file (optimized for context efficiency). Returns only the function code, not the entire file.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "path": { 
+                        "type": "string",
+                        "description": "File path"
+                    },
+                    "function_name": { 
+                        "type": "string",
+                        "description": "Name of the function to read"
+                    }
+                },
+                "required": ["path", "function_name"],
+                "additionalProperties": false
+            }),
+            required_permission: PermissionMode::ReadOnly,
+        },
+        ToolSpec {
             name: "write_file",
             description: "Write a text file in the workspace.",
             input_schema: json!({
@@ -1259,6 +1279,10 @@ fn execute_tool_with_enforcer(
         "read_file" => {
             maybe_enforce_permission_check(enforcer, name, input)?;
             from_value::<ReadFileInput>(input).and_then(run_read_file)
+        }
+        "read_function" => {
+            maybe_enforce_permission_check(enforcer, name, input)?;
+            from_value::<ReadFunctionInput>(input).and_then(run_read_function)
         }
         "write_file" => {
             maybe_enforce_permission_check(enforcer, name, input)?;
@@ -2119,6 +2143,18 @@ fn run_read_file(input: ReadFileInput) -> Result<String, String> {
 }
 
 #[allow(clippy::needless_pass_by_value)]
+fn run_read_function(input: ReadFunctionInput) -> Result<String, String> {
+    use runtime::optimized_tools::function_reader::{read_function, ReadFunctionInput as FuncInput};
+    
+    let result = read_function(FuncInput {
+        path: input.path,
+        function_name: input.function_name,
+    }).map_err(|e| e)?;
+    
+    to_pretty_json(result)
+}
+
+#[allow(clippy::needless_pass_by_value)]
 fn run_write_file(input: WriteFileInput) -> Result<String, String> {
     to_pretty_json(write_file(&input.path, &input.content).map_err(io_to_string)?)
 }
@@ -2302,6 +2338,12 @@ struct ReadFileInput {
     path: String,
     offset: Option<usize>,
     limit: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ReadFunctionInput {
+    path: String,
+    function_name: String,
 }
 
 #[derive(Debug, Deserialize)]

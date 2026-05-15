@@ -9,7 +9,7 @@ pub mod bash_validation;
 mod background_process;
 mod bootstrap;
 pub mod branch_lock;
-mod compact;
+pub mod compact;
 mod config;
 pub mod config_validate;
 mod conversation;
