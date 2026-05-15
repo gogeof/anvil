@@ -180,7 +180,8 @@ impl GitDiffEngine {
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| format!("{}..{}", from, to));
         
-        let mut args = vec!["diff", "--color=always", &format!("{}..{}", from, to)];
+        let range = format!("{}..{}", from, to);
+        let mut args = vec!["diff", "--color=always", &range];
         if let Some(p) = path {
             args.push("--");
             args.push(p.to_str().unwrap_or("."));

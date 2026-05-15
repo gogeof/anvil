@@ -62,13 +62,13 @@ impl CodeFormatter {
     }
     
     /// 检测文件语言
-    pub fn detect_language(&self, path: &Path) -> Option<&str> {
+    pub fn detect_language(&self, path: &Path) -> Option<String> {
         path.extension()
             .and_then(|ext| ext.to_str())
             .and_then(|ext| {
                 self.tools.iter()
                     .find(|(ext_name, _)| *ext_name == ext)
-                    .map(|(_, _)| ext)
+                    .map(|(_, _)| ext.to_string())
             })
     }
     
@@ -104,8 +104,7 @@ impl CodeFormatter {
     pub fn format_file(&self, path: &Path) -> FormatResult {
         let file_path = path.to_string_lossy().to_string();
         let language = self.detect_language(path)
-            .unwrap_or("unknown")
-            .to_string();
+            .unwrap_or_else(|| "unknown".to_string());
         
         // 获取可用的格式化工具
         let available_tools = self.get_available_tools(path);
@@ -184,9 +183,9 @@ mod tests {
     #[test]
     fn test_detect_language() {
         let formatter = CodeFormatter::new();
-        assert_eq!(formatter.detect_language(Path::new("test.rs")), Some("rs"));
-        assert_eq!(formatter.detect_language(Path::new("test.py")), Some("py"));
-        assert_eq!(formatter.detect_language(Path::new("test.js")), Some("js"));
+        assert_eq!(formatter.detect_language(Path::new("test.rs")), Some("rs".to_string()));
+        assert_eq!(formatter.detect_language(Path::new("test.py")), Some("py".to_string()));
+        assert_eq!(formatter.detect_language(Path::new("test.js")), Some("js".to_string()));
     }
     
     #[test]
