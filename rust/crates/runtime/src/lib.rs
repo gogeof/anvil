@@ -59,8 +59,8 @@ pub mod worker_boot;
 pub mod worktree;
 
 pub use bash::{
-    create_process_group, execute_bash, get_child_processes, get_incremental_output,
-    get_process_group, get_process_resource_usage, list_background_processes,
+    create_process_group, execute_bash, get_background_process, get_child_processes, 
+    get_incremental_output, get_process_group, get_process_resource_usage, list_background_processes,
     list_background_processes_by_status, list_process_groups, pause_background_process,
     refresh_all_background_processes, refresh_background_process, remove_background_process,
     resume_background_process, send_signal_to_process, stop_background_process,

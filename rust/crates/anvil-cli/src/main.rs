@@ -5663,9 +5663,15 @@ impl LiveCli {
             | SlashCommand::ReleaseNotes
             | SlashCommand::SecurityReview
             | SlashCommand::Keybindings
-            | SlashCommand::PrivacySettings
-            | SlashCommand::Tasks { .. }
-            | SlashCommand::Theme { .. }
+            | SlashCommand::PrivacySettings => {
+                eprintln!("/privacy-settings is not yet implemented in this build.");
+                false
+            }
+            SlashCommand::Tasks { args } => {
+                self.run_tasks(args.as_deref())?;
+                false
+            }
+            SlashCommand::Theme { .. }
             | SlashCommand::Voice { .. }
             | SlashCommand::Usage { .. }
             | SlashCommand::Rename { .. }
@@ -5789,6 +5795,79 @@ impl LiveCli {
         format!(
             "╭─{border}─╮\n│{inner}│\n╰─{border}─╯"
         )
+    }
+
+    fn run_tasks(&self, args: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+        use runtime::{
+            list_background_processes, get_background_process, stop_background_process,
+        };
+        
+        match args {
+            None | Some("list") | Some("") => {
+                let processes = list_background_processes();
+                if processes.processes.is_empty() {
+                    println!("No background processes running.");
+                } else {
+                    println!("Background Processes:");
+                    println!("{:<12} {:<20} {:<10} {:<8} {}", "ID", "Command", "Status", "PID", "Description");
+                    println!("{}", "-".repeat(70));
+                    for p in &processes.processes {
+                        let pid = p.pid.map(|id| id.to_string()).unwrap_or("-".to_string());
+                        let desc = p.description.as_deref().unwrap_or("-");
+                        let cmd = if p.command.len() > 20 { 
+                            format!("{}...", &p.command[..17]) 
+                        } else { 
+                            p.command.clone() 
+                        };
+                        println!("{:<12} {:<20} {:<10} {:<8} {}", 
+                            p.process_id, cmd, p.status, pid, desc);
+                    }
+                    println!("\nTotal: {} process(es)", processes.processes.len());
+                }
+            }
+            Some(arg) if arg.starts_with("get ") => {
+                let id = arg.strip_prefix("get ").unwrap_or("").trim();
+                if id.is_empty() {
+                    eprintln!("Usage: /tasks get <process-id>");
+                } else if let Some(p) = get_background_process(id) {
+                    println!("Process: {}", p.process_id);
+                    println!("Command: {}", p.command);
+                    println!("Status: {}", p.status);
+                    if let Some(pid) = p.pid {
+                        println!("PID: {}", pid);
+                    }
+                    if let Some(exit_code) = p.exit_code {
+                        println!("Exit Code: {}", exit_code);
+                    }
+                    if let Some(desc) = &p.description {
+                        println!("Description: {}", desc);
+                    }
+                } else {
+                    println!("Process '{}' not found.", id);
+                }
+            }
+            Some(arg) if arg.starts_with("stop ") => {
+                let id = arg.strip_prefix("stop ").unwrap_or("").trim();
+                if id.is_empty() {
+                    eprintln!("Usage: /tasks stop <process-id>");
+                } else {
+                    match stop_background_process(id) {
+                        Ok(result) => {
+                            println!("Process {} stopped ({})", 
+                                result.process_id, result.message);
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to stop process: {}", e);
+                        }
+                    }
+                }
+            }
+            Some(other) => {
+                eprintln!("Unknown argument: {}", other);
+                println!("Usage: /tasks [list|get <id>|stop <id>]");
+            }
+        }
+        Ok(())
     }
 
     fn print_status(&self) {
