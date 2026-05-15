@@ -3,7 +3,6 @@
 //! Provides stack trace parsing, error analysis, breakpoint suggestions,
 //! and debugging workflows.
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use serde::{Deserialize, Serialize};

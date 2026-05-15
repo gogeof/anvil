@@ -4,7 +4,7 @@
 
 use std::path::Path;
 use serde::{Deserialize, Serialize};
-use crate::smart_summary::{SmartSummaryEngine, Signature};
+use crate::smart_summary::SmartSummaryEngine;
 
 /// 函数读取输入
 #[derive(Debug, Deserialize)]

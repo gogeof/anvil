@@ -15,8 +15,8 @@
 //! - Event notifications: status change callbacks
 
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::Child;
 use std::sync::{Arc, Condvar, Mutex};

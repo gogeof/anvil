@@ -5,7 +5,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{Instant, Duration};
-use serde::{Deserialize, Serialize};
 
 /// 缓存条目
 #[derive(Debug, Clone)]
