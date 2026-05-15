@@ -42,11 +42,15 @@ mod sse;
 pub mod stale_base;
 pub mod stale_branch;
 pub mod summary_compression;
+pub mod syntax_highlight;
 pub mod task_packet;
 pub mod task_registry;
 pub mod team_cron_registry;
 pub mod test_runner;
 pub mod debug_tools;
+pub mod fuzzy_match;
+pub mod perf;
+pub mod pty;
 #[cfg(test)]
 mod trust_resolver;
 mod usage;
@@ -91,9 +95,9 @@ pub use conversation::{
     ToolExecutor, TurnSummary,
 };
 pub use file_ops::{
-    edit_file, edit_file_fuzzy, edit_file_with_config, edit_file_with_fuzzy, glob_search,
-    grep_search, read_file, write_file, EditFileOutput, FuzzyEditConfig, FuzzyMatchInfo,
-    FuzzyMatchResult, FuzzyMatchType, GlobSearchOutput, GrepSearchInput, GrepSearchOutput,
+    edit_file, glob_search,
+    grep_search, read_file, write_file, EditFileOutput,
+    GlobSearchOutput, GrepSearchInput, GrepSearchOutput,
     ReadFileOutput, StructuredPatchHunk, TextFilePayload, WriteFileOutput,
 };
 pub use git_context::{GitCommitEntry, GitContext};
@@ -185,6 +189,9 @@ pub use task_packet::{validate_packet, TaskPacket, TaskPacketValidationError, Va
 pub use trust_resolver::{TrustConfig, TrustDecision, TrustEvent, TrustPolicy, TrustResolver};
 pub use usage::{
     format_usd, pricing_for_model, ModelPricing, TokenUsage, UsageCostEstimate, UsageTracker,
+};
+pub use syntax_highlight::{
+    detect_language, get_code_structure, highlight_code, CodeBlock, CodeBlockType,
 };
 pub use worker_boot::{
     Worker, WorkerEvent, WorkerEventKind, WorkerEventPayload, WorkerFailure, WorkerFailureKind,
