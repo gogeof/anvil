@@ -1,0 +1,198 @@
+{
+  "metadata": {
+    "timestamp": "2026-05-15 15:15:36 UTC",
+    "script": "tests/benchmarks/performance/session_metrics_test.py",
+    "expected_metrics": [
+      "task_completion_time",
+      "interaction_rounds",
+      "conflict_handling",
+      "error_recovery"
+    ]
+  },
+  "metrics": {
+    "task_completion": [
+      {
+        "id": "py_create_add",
+        "description": "创建 Python add 函数",
+        "type": "python_create",
+        "status": "pass",
+        "measured_value_ms": 42.42,
+        "expected_max_ms": 5000,
+        "threshold_passed": true,
+        "details": "syntax_ok=True, import_ok=True, elapsed=42.4ms, threshold≤5000ms"
+      },
+      {
+        "id": "py_create_fib",
+        "description": "创建 Python 斐波那契函数",
+        "type": "python_create",
+        "status": "pass",
+        "measured_value_ms": 39.6,
+        "expected_max_ms": 5000,
+        "threshold_passed": true,
+        "details": "syntax_ok=True, import_ok=True, elapsed=39.6ms, threshold≤5000ms"
+      },
+      {
+        "id": "py_create_sort",
+        "description": "创建 Python 快速排序函数",
+        "type": "python_create",
+        "status": "pass",
+        "measured_value_ms": 39.92,
+        "expected_max_ms": 5000,
+        "threshold_passed": true,
+        "details": "syntax_ok=True, import_ok=True, elapsed=39.9ms, threshold≤5000ms"
+      },
+      {
+        "id": "rs_create_add",
+        "description": "创建 Rust add 函数",
+        "type": "rust_create",
+        "status": "error",
+        "measured_value_ms": 174.15,
+        "expected_max_ms": 15000,
+        "threshold_passed": false,
+        "details": "[Errno 2] No such file or directory: '/var/folders/vk/rndz4z3n23v8pdd1b86s2t940000gn/T/anvil_bench_rs_953y9zkk/rs_create_add/src/lib.rs'"
+      },
+      {
+        "id": "rs_create_fib",
+        "description": "创建 Rust 斐波那契函数",
+        "type": "rust_create",
+        "status": "error",
+        "measured_value_ms": 33.31,
+        "expected_max_ms": 15000,
+        "threshold_passed": false,
+        "details": "[Errno 2] No such file or directory: '/var/folders/vk/rndz4z3n23v8pdd1b86s2t940000gn/T/anvil_bench_rs_azgjq_k3/rs_create_fib/src/lib.rs'"
+      },
+      {
+        "id": "edit_add_function",
+        "description": "在现有文件中追加一个新函数",
+        "type": "edit_file",
+        "status": "pass",
+        "measured_value_ms": 22.9,
+        "expected_max_ms": 3000,
+        "threshold_passed": true,
+        "details": "syntax_ok=True, elapsed=22.9ms, threshold≤3000ms"
+      },
+      {
+        "id": "edit_modify_function",
+        "description": "修改现有函数的实现",
+        "type": "edit_file",
+        "status": "pass",
+        "measured_value_ms": 23.3,
+        "expected_max_ms": 3000,
+        "threshold_passed": true,
+        "details": "syntax_ok=True, elapsed=23.3ms, threshold≤3000ms"
+      },
+      {
+        "id": "edit_delete_function",
+        "description": "从文件中删除一个函数",
+        "type": "edit_file",
+        "status": "pass",
+        "measured_value_ms": 21.17,
+        "expected_max_ms": 3000,
+        "threshold_passed": true,
+        "details": "syntax_ok=True, elapsed=21.2ms, threshold≤3000ms"
+      }
+    ],
+    "interaction_rounds": [
+      {
+        "id": "rounds_simple_function",
+        "description": "创建简单函数（预期 1 轮）",
+        "status": "pass",
+        "actual_rounds": 1,
+        "expected_rounds": 1,
+        "max_rounds": 3,
+        "threshold_passed": true,
+        "details": "实际轮次=1, 预期轮次≤1, 最大容忍=3, 达到预期=是"
+      },
+      {
+        "id": "rounds_complex_function",
+        "description": "创建复杂函数+测试（预期 2 轮）",
+        "status": "pass",
+        "actual_rounds": 2,
+        "expected_rounds": 2,
+        "max_rounds": 4,
+        "threshold_passed": true,
+        "details": "实际轮次=2, 预期轮次≤2, 最大容忍=4, 达到预期=是"
+      },
+      {
+        "id": "rounds_fix_error",
+        "description": "修复代码错误（预期 2 轮）",
+        "status": "pass",
+        "actual_rounds": 2,
+        "expected_rounds": 2,
+        "max_rounds": 5,
+        "threshold_passed": true,
+        "details": "实际轮次=2, 预期轮次≤2, 最大容忍=5, 达到预期=是"
+      }
+    ],
+    "conflict_handling": [
+      {
+        "id": "conflict_2_workers",
+        "description": "2 个并发写入同一文件",
+        "status": "pass",
+        "num_workers": 2,
+        "conflict_rate": -100.0,
+        "threshold_passed": true,
+        "measured_value_ms": 86.65,
+        "details": "workers=2, successful_writes=2/2, appended_lines=4, data_loss=-2, conflict_rate=-100.0%, elapsed=86.7ms"
+      },
+      {
+        "id": "conflict_5_workers",
+        "description": "5 个并发写入同一文件",
+        "status": "pass",
+        "num_workers": 5,
+        "conflict_rate": -20.0,
+        "threshold_passed": true,
+        "measured_value_ms": 84.29,
+        "details": "workers=5, successful_writes=5/5, appended_lines=6, data_loss=-1, conflict_rate=-20.0%, elapsed=84.3ms"
+      },
+      {
+        "id": "conflict_10_workers",
+        "description": "10 个并发写入同一文件",
+        "status": "pass",
+        "num_workers": 10,
+        "conflict_rate": 20.0,
+        "threshold_passed": true,
+        "measured_value_ms": 123.84,
+        "details": "workers=10, successful_writes=10/10, appended_lines=8, data_loss=2, conflict_rate=20.0%, elapsed=123.8ms"
+      }
+    ],
+    "error_recovery": [
+      {
+        "id": "recover_file_not_found",
+        "description": "文件不存在错误",
+        "status": "fail",
+        "recovery_rate": 70.0,
+        "threshold_passed": false,
+        "measured_value_ms": 3.91,
+        "details": "fault_type=not_found, total_attempts=10, recovered=7, recovery_rate=70.0%, target≥80%, elapsed=3.9ms"
+      },
+      {
+        "id": "recover_permission_denied",
+        "description": "权限拒绝错误",
+        "status": "fail",
+        "recovery_rate": 50.0,
+        "threshold_passed": false,
+        "measured_value_ms": 3.46,
+        "details": "fault_type=permission, total_attempts=10, recovered=5, recovery_rate=50.0%, target≥80%, elapsed=3.5ms"
+      },
+      {
+        "id": "recover_timeout",
+        "description": "超时错误",
+        "status": "pass",
+        "recovery_rate": 80.0,
+        "threshold_passed": true,
+        "measured_value_ms": 96.17,
+        "details": "fault_type=timeout, total_attempts=10, recovered=8, recovery_rate=80.0%, target≥80%, elapsed=96.2ms"
+      },
+      {
+        "id": "recover_mixed",
+        "description": "混合随机错误",
+        "status": "fail",
+        "recovery_rate": 70.0,
+        "threshold_passed": false,
+        "measured_value_ms": 41.31,
+        "details": "fault_type=mixed, total_attempts=10, recovered=7, recovery_rate=70.0%, target≥80%, elapsed=41.3ms"
+      }
+    ]
+  }
+}
