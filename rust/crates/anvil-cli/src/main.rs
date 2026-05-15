@@ -9598,16 +9598,6 @@ fn collect_prompt_cache_events(summary: &runtime::TurnSummary) -> Vec<serde_json
 /// in this build. Used to filter both REPL completions and help output so the
 /// discovery surface only shows commands that actually work (ROADMAP #39).
 const STUB_COMMANDS: &[&str] = &[
-    "login",
-    "logout",
-    "vim",
-    "upgrade",
-    "share",
-    "feedback",
-    "files",
-    "fast",
-    "exit",
-    "summary",
     "desktop",
     "brief",
     "advisor",
