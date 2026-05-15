@@ -6,6 +6,7 @@
 
 mod bash;
 pub mod bash_validation;
+mod background_process;
 mod bootstrap;
 pub mod branch_lock;
 mod compact;
@@ -44,13 +45,28 @@ pub mod summary_compression;
 pub mod task_packet;
 pub mod task_registry;
 pub mod team_cron_registry;
+pub mod test_runner;
+pub mod debug_tools;
 #[cfg(test)]
 mod trust_resolver;
 mod usage;
 pub mod worker_boot;
 pub mod worktree;
 
-pub use bash::{execute_bash, BashCommandInput, BashCommandOutput};
+pub use bash::{
+    create_process_group, execute_bash, get_child_processes, get_incremental_output,
+    get_process_group, get_process_resource_usage, list_background_processes,
+    list_background_processes_by_status, list_process_groups, pause_background_process,
+    refresh_all_background_processes, refresh_background_process, remove_background_process,
+    resume_background_process, send_signal_to_process, stop_background_process,
+    stop_process_group, wait_for_process, BackgroundProcessInfo, BackgroundProcessList,
+    BackgroundProcessOutput, BashCommandInput, BashCommandOutput, SignalResult,
+    StopProcessResult,
+};
+pub use background_process::{
+    BackgroundProcess, BackgroundProcessManager, ChildProcessInfo, IncrementalOutput,
+    OutputPosition, ProcessSignal, ProcessStatus, ResourceLimits, ResourceUsage, RestartPolicy,
+};
 pub use bootstrap::{BootstrapPhase, BootstrapPlan};
 pub use branch_lock::{detect_branch_lock_collisions, BranchLockCollision, BranchLockIntent};
 pub use compact::{
@@ -75,9 +91,10 @@ pub use conversation::{
     ToolExecutor, TurnSummary,
 };
 pub use file_ops::{
-    edit_file, glob_search, grep_search, read_file, write_file, EditFileOutput, GlobSearchOutput,
-    GrepSearchInput, GrepSearchOutput, ReadFileOutput, StructuredPatchHunk, TextFilePayload,
-    WriteFileOutput,
+    edit_file, edit_file_fuzzy, edit_file_with_config, edit_file_with_fuzzy, glob_search,
+    grep_search, read_file, write_file, EditFileOutput, FuzzyEditConfig, FuzzyMatchInfo,
+    FuzzyMatchResult, FuzzyMatchType, GlobSearchOutput, GrepSearchInput, GrepSearchOutput,
+    ReadFileOutput, StructuredPatchHunk, TextFilePayload, WriteFileOutput,
 };
 pub use git_context::{GitCommitEntry, GitContext};
 pub use hooks::{

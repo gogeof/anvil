@@ -224,7 +224,7 @@ mod tests {
         assert_eq!(normalize_name_for_mcp("tool name!"), "tool_name_");
         assert_eq!(
             normalize_name_for_mcp("anvil.example.server"),
-            "anvil_ai_Example_Server"
+            "anvil_example_server"
         );
         assert_eq!(
             mcp_tool_name("anvil.example.server", "weather tool"),

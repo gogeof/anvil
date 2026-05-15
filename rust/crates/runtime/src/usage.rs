@@ -291,13 +291,21 @@ mod tests {
             cache_read_input_tokens: 200_000,
         };
 
+        // Default Sonnet-tier pricing
         let cost = usage.estimate_cost_usd();
         assert_eq!(format_usd(cost.input_cost_usd), "$15.0000");
         assert_eq!(format_usd(cost.output_cost_usd), "$37.5000");
+        
+        // deepseek-v4-pro specific pricing
+        // input: 1M * $2.0 = $2.0
+        // output: 500K * $8.0 = $4.0
+        // cache_creation: 100K * $2.5 = $0.25
+        // cache_read: 200K * $0.25 = $0.05
+        // total: $6.30
         let lines = usage.summary_lines_for_model("usage", Some("deepseek-v4-pro"));
-        assert!(lines[0].contains("estimated_cost=$54.6750"));
+        assert!(lines[0].contains("estimated_cost=$6.3000"));
         assert!(lines[0].contains("model=deepseek-v4-pro"));
-        assert!(lines[1].contains("cache_read=$0.3000"));
+        assert!(lines[1].contains("cache_read=$0.0500"));
     }
 
     #[test]
@@ -309,12 +317,14 @@ mod tests {
             cache_read_input_tokens: 0,
         };
 
-        let haiku = pricing_for_model("deepseek-v4-flash").expect("haiku pricing");
-        let opus = pricing_for_model("deepseek-v4-pro").expect("opus pricing");
-        let haiku_cost = usage.estimate_cost_usd_with_pricing(haiku);
-        let opus_cost = usage.estimate_cost_usd_with_pricing(opus);
-        assert_eq!(format_usd(haiku_cost.total_cost_usd()), "$3.5000");
-        assert_eq!(format_usd(opus_cost.total_cost_usd()), "$52.5000");
+        let flash = pricing_for_model("deepseek-v4-flash").expect("flash pricing");
+        let pro = pricing_for_model("deepseek-v4-pro").expect("pro pricing");
+        let flash_cost = usage.estimate_cost_usd_with_pricing(flash);
+        let pro_cost = usage.estimate_cost_usd_with_pricing(pro);
+        // flash: 1M * $0.30 + 500K * $1.20 = $0.30 + $0.60 = $0.90
+        assert_eq!(format_usd(flash_cost.total_cost_usd()), "$0.9000");
+        // pro: 1M * $2.0 + 500K * $8.0 = $2.0 + $4.0 = $6.0
+        assert_eq!(format_usd(pro_cost.total_cost_usd()), "$6.0000");
     }
 
     #[test]

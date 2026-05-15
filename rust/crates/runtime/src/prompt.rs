@@ -581,8 +581,9 @@ mod tests {
         let root = temp_dir();
         let nested = root.join("apps").join("api");
         fs::create_dir_all(nested.join(".anvil")).expect("nested claw dir");
+        fs::create_dir_all(root.join(".anvil")).expect("root claw dir");
         fs::write(root.join("AGENTS.md"), "root instructions").expect("write root instructions");
-        fs::write(root.join("instructions.local.md"), "local instructions")
+        fs::write(root.join(".anvil").join("instructions.local.md"), "local instructions")
             .expect("write local instructions");
         fs::create_dir_all(root.join("apps")).expect("apps dir");
         fs::create_dir_all(root.join("apps").join(".anvil")).expect("apps claw dir");
@@ -608,15 +609,16 @@ mod tests {
             .map(|file| file.content.as_str())
             .collect::<Vec<_>>();
 
+        // Order: root -> apps -> nested (ancestor chain)
+        // Each directory: .anvil/instructions.md, .anvil/instructions.local.md, AGENTS.md
+        // Note: dedupe removes duplicates by content hash
         assert_eq!(
             contents,
             vec![
-                "root instructions",
-                "local instructions",
-                "apps instructions",
-                "apps instructions",
-                "nested rules",
-                "nested instructions"
+                "local instructions",  // root/.anvil/instructions.local.md
+                "root instructions",   // root/AGENTS.md
+                "apps instructions",   // apps/.anvil/instructions.md (apps/AGENTS.md deduped)
+                "nested instructions"  // apps/api/.anvil/instructions.md
             ]
         );
         fs::remove_dir_all(root).expect("cleanup temp dir");

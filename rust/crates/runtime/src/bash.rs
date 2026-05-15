@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::env;
 use std::io;
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -8,12 +10,146 @@ use tokio::process::Command as TokioCommand;
 use tokio::runtime::Builder;
 use tokio::time::timeout;
 
+use crate::background_process::{
+    BackgroundProcessManager, ProcessStatus, ResourceLimits, RestartPolicy,
+};
 use crate::lane_events::{LaneEvent, ShipMergeMethod, ShipProvenance};
 use crate::sandbox::{
     build_linux_sandbox_command, resolve_sandbox_status_for_request, FilesystemIsolationMode,
     SandboxConfig, SandboxStatus,
 };
 use crate::ConfigLoader;
+
+/// Global background process manager instance.
+static PROCESS_MANAGER: OnceLock<BackgroundProcessManager> = OnceLock::new();
+
+/// Get the global process manager, initializing if necessary.
+pub fn process_manager() -> &'static BackgroundProcessManager {
+    PROCESS_MANAGER.get_or_init(BackgroundProcessManager::new)
+}
+
+// ============================================================================
+// Output Capture Configuration
+// ============================================================================
+
+/// Output capture mode for background processes.
+///
+/// Determines how process output (stdout/stderr) is captured and made available.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum OutputCaptureMode {
+    /// Traditional file-based output capture (default).
+    /// Output is written to temporary files and can be read later.
+    /// This is the most reliable mode and works in all environments.
+    #[default]
+    File,
+    /// In-memory pipe-based capture for real-time streaming.
+    /// Output is available immediately via subscription.
+    /// Requires async runtime and may have higher memory usage.
+    Pipe,
+    /// Both file and pipe capture enabled.
+    /// Provides both real-time streaming and persistent storage.
+    Hybrid,
+}
+
+/// Resource limits input in user-friendly format.
+///
+/// These limits are applied to the process to constrain resource usage.
+/// On Unix systems, these are implemented via `prlimit` and `setrlimit`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceLimitsInput {
+    /// Maximum CPU time in seconds.
+    pub cpu_time_seconds: Option<u64>,
+    /// Maximum memory in megabytes.
+    pub memory_mb: Option<u64>,
+    /// Maximum number of open file descriptors.
+    pub max_files: Option<u64>,
+    /// Maximum number of child processes.
+    pub max_processes: Option<u64>,
+    /// Maximum file size that can be created (MB).
+    pub max_file_size_mb: Option<u64>,
+}
+
+impl From<ResourceLimitsInput> for ResourceLimits {
+    fn from(input: ResourceLimitsInput) -> Self {
+        Self {
+            cpu_time_seconds: input.cpu_time_seconds,
+            memory_mb: input.memory_mb,
+            max_files: input.max_files,
+            max_processes: input.max_processes,
+            max_file_size_mb: input.max_file_size_mb,
+        }
+    }
+}
+
+/// Restart policy input configuration.
+///
+/// Controls automatic restart behavior when a background process exits.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RestartPolicyInput {
+    /// Restart policy type.
+    pub policy: RestartPolicy,
+    /// Maximum restart attempts (ignored for Unlimited policy).
+    #[serde(default = "default_max_restart_attempts")]
+    pub max_attempts: u32,
+    /// Delay between restart attempts in milliseconds.
+    #[serde(default)]
+    pub delay_ms: u64,
+    /// Exponential backoff multiplier for delay (1.0 = no backoff).
+    #[serde(default = "default_backoff_multiplier")]
+    pub backoff_multiplier: f64,
+    /// Maximum delay cap in milliseconds.
+    pub max_delay_ms: Option<u64>,
+}
+
+fn default_max_restart_attempts() -> u32 {
+    3
+}
+
+fn default_backoff_multiplier() -> f64 {
+    2.0
+}
+
+impl Default for RestartPolicyInput {
+    fn default() -> Self {
+        Self {
+            policy: RestartPolicy::Never,
+            max_attempts: 3,
+            delay_ms: 0,
+            backoff_multiplier: 2.0,
+            max_delay_ms: None,
+        }
+    }
+}
+
+/// Process priority for scheduling.
+///
+/// Higher values indicate higher priority. On Unix, this maps to nice values
+/// (inverted: higher priority = lower nice value).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ProcessPriority(pub i32);
+
+impl ProcessPriority {
+    /// Lowest priority (nice 19 on Unix).
+    pub const LOWEST: Self = Self(-20);
+    /// Low priority.
+    pub const LOW: Self = Self(-10);
+    /// Normal priority (default).
+    pub const NORMAL: Self = Self(0);
+    /// High priority.
+    pub const HIGH: Self = Self(10);
+    /// Highest priority (nice -20 on Unix).
+    pub const HIGHEST: Self = Self(20);
+}
+
+impl Default for ProcessPriority {
+    fn default() -> Self {
+        Self::NORMAL
+    }
+}
 
 /// Input schema for the built-in bash execution tool.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -73,34 +209,83 @@ pub fn execute_bash(input: BashCommandInput) -> io::Result<BashCommandOutput> {
     let sandbox_status = sandbox_status_for_input(&input, &cwd);
 
     if input.run_in_background.unwrap_or(false) {
-        let mut child = prepare_command(&input.command, &cwd, &sandbox_status, false);
-        let child = child
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?;
-
-        return Ok(BashCommandOutput {
-            stdout: String::new(),
-            stderr: String::new(),
-            raw_output_path: None,
-            interrupted: false,
-            is_image: None,
-            background_task_id: Some(child.id().to_string()),
-            backgrounded_by_user: Some(false),
-            assistant_auto_backgrounded: Some(false),
-            dangerously_disable_sandbox: input.dangerously_disable_sandbox,
-            return_code_interpretation: None,
-            no_output_expected: Some(true),
-            structured_content: None,
-            persisted_output_path: None,
-            persisted_output_size: None,
-            sandbox_status: Some(sandbox_status),
-        });
+        return execute_bash_background(input, sandbox_status, cwd);
     }
 
     let runtime = Builder::new_current_thread().enable_all().build()?;
     runtime.block_on(execute_bash_async(input, sandbox_status, cwd))
+}
+
+/// Execute a command in the background with output capture.
+fn execute_bash_background(
+    input: BashCommandInput,
+    sandbox_status: SandboxStatus,
+    cwd: std::path::PathBuf,
+) -> io::Result<BashCommandOutput> {
+    let output_dir = std::env::temp_dir().join(".claw-background");
+    std::fs::create_dir_all(&output_dir)?;
+
+    let manager = process_manager();
+    manager.set_output_dir(output_dir);
+
+    // Create output files for capturing stdout/stderr
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let stdout_path = std::env::temp_dir()
+        .join(".claw-background")
+        .join(format!("bg_{}.stdout", timestamp));
+    let stderr_path = std::env::temp_dir()
+        .join(".claw-background")
+        .join(format!("bg_{}.stderr", timestamp));
+
+    // Create the output files
+    std::fs::File::create(&stdout_path)?;
+    std::fs::File::create(&stderr_path)?;
+
+    let stdout_file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&stdout_path)?;
+    let stderr_file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&stderr_path)?;
+
+    let mut child = prepare_command(&input.command, &cwd, &sandbox_status, false);
+    let mut child = child
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(stdout_file))
+        .stderr(Stdio::from(stderr_file))
+        .spawn()?;
+
+    let sandbox_enabled = !input.dangerously_disable_sandbox.unwrap_or(false);
+    let process = manager.register(
+        &mut child,
+        &input.command,
+        input.description.as_deref(),
+        sandbox_enabled,
+        &cwd,
+    )?;
+
+    Ok(BashCommandOutput {
+        stdout: String::new(),
+        stderr: String::new(),
+        raw_output_path: Some(stdout_path.to_string_lossy().to_string()),
+        interrupted: false,
+        is_image: None,
+        background_task_id: Some(process.process_id),
+        backgrounded_by_user: Some(true),
+        assistant_auto_backgrounded: Some(false),
+        dangerously_disable_sandbox: input.dangerously_disable_sandbox,
+        return_code_interpretation: None,
+        no_output_expected: Some(true),
+        structured_content: None,
+        persisted_output_path: Some(stdout_path.to_string_lossy().to_string()),
+        persisted_output_size: Some(0),
+        sandbox_status: Some(sandbox_status),
+    })
 }
 
 /// Detect git push to main and emit ship provenance event
@@ -367,6 +552,416 @@ fn truncate_output(s: &str) -> String {
     let mut truncated = s[..end].to_string();
     truncated.push_str("\n\n[output truncated — exceeded 16384 bytes]");
     truncated
+}
+
+// ============================================================================
+// Background Process Control API
+// ============================================================================
+
+/// Output from listing background processes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackgroundProcessList {
+    pub processes: Vec<BackgroundProcessInfo>,
+    pub total: usize,
+}
+
+/// Summary information about a background process.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackgroundProcessInfo {
+    #[serde(rename = "processId")]
+    pub process_id: String,
+    pub command: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub pid: Option<u32>,
+    #[serde(rename = "exitCode")]
+    pub exit_code: Option<i32>,
+    #[serde(rename = "createdAt")]
+    pub created_at: u64,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: u64,
+    #[serde(rename = "stdoutSize")]
+    pub stdout_size: u64,
+    #[serde(rename = "stderrSize")]
+    pub stderr_size: u64,
+}
+
+/// Output from getting a background process's output.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackgroundProcessOutput {
+    #[serde(rename = "processId")]
+    pub process_id: String,
+    pub status: String,
+    pub stdout: String,
+    pub stderr: String,
+    #[serde(rename = "stdoutSize")]
+    pub stdout_size: u64,
+    #[serde(rename = "stderrSize")]
+    pub stderr_size: u64,
+}
+
+/// Result of stopping a background process.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StopProcessResult {
+    #[serde(rename = "processId")]
+    pub process_id: String,
+    pub status: String,
+    pub message: String,
+}
+
+/// List all background processes.
+pub fn list_background_processes() -> BackgroundProcessList {
+    let manager = process_manager();
+    let processes: Vec<BackgroundProcessInfo> = manager
+        .list(None)
+        .into_iter()
+        .map(|p| BackgroundProcessInfo {
+            process_id: p.process_id,
+            command: p.command,
+            description: p.description,
+            status: p.status.to_string(),
+            pid: p.pid,
+            exit_code: p.exit_code,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            stdout_size: p.stdout_size,
+            stderr_size: p.stderr_size,
+        })
+        .collect();
+    let total = processes.len();
+    BackgroundProcessList { processes, total }
+}
+
+/// List background processes filtered by status.
+pub fn list_background_processes_by_status(status: ProcessStatus) -> BackgroundProcessList {
+    let manager = process_manager();
+    let processes: Vec<BackgroundProcessInfo> = manager
+        .list(Some(status))
+        .into_iter()
+        .map(|p| BackgroundProcessInfo {
+            process_id: p.process_id,
+            command: p.command,
+            description: p.description,
+            status: p.status.to_string(),
+            pid: p.pid,
+            exit_code: p.exit_code,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            stdout_size: p.stdout_size,
+            stderr_size: p.stderr_size,
+        })
+        .collect();
+    let total = processes.len();
+    BackgroundProcessList { processes, total }
+}
+
+/// Get information about a specific background process.
+pub fn get_background_process(process_id: &str) -> Option<BackgroundProcessInfo> {
+    let manager = process_manager();
+    manager.get(process_id).map(|p| BackgroundProcessInfo {
+        process_id: p.process_id,
+        command: p.command,
+        description: p.description,
+        status: p.status.to_string(),
+        pid: p.pid,
+        exit_code: p.exit_code,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+        stdout_size: p.stdout_size,
+        stderr_size: p.stderr_size,
+    })
+}
+
+/// Stop a running background process.
+pub fn stop_background_process(process_id: &str) -> Result<StopProcessResult, String> {
+    let manager = process_manager();
+    let process = manager.stop(process_id)?;
+    Ok(StopProcessResult {
+        process_id: process.process_id,
+        status: process.status.to_string(),
+        message: "Process stopped successfully".to_string(),
+    })
+}
+
+/// Refresh the status of a background process.
+pub fn refresh_background_process(process_id: &str) -> Result<BackgroundProcessInfo, String> {
+    let manager = process_manager();
+    let process = manager.refresh_status(process_id)?;
+    Ok(BackgroundProcessInfo {
+        process_id: process.process_id,
+        command: process.command,
+        description: process.description,
+        status: process.status.to_string(),
+        pid: process.pid,
+        exit_code: process.exit_code,
+        created_at: process.created_at,
+        updated_at: process.updated_at,
+        stdout_size: process.stdout_size,
+        stderr_size: process.stderr_size,
+    })
+}
+
+/// Get the output from a background process.
+///
+/// # Arguments
+/// * `process_id` - The process ID
+/// * `stream` - Which output stream to read ("stdout", "stderr", or "both")
+/// * `tail` - Number of lines to read from the end (None = all)
+pub fn get_background_process_output(
+    process_id: &str,
+    stream: &str,
+    tail: Option<usize>,
+) -> Result<BackgroundProcessOutput, String> {
+    let manager = process_manager();
+
+    // Refresh status first to get latest output sizes
+    let process = manager.refresh_status(process_id)?;
+
+    let stdout = manager.get_output(process_id, "stdout", tail)?;
+    let stderr = manager.get_output(process_id, "stderr", tail)?;
+
+    let (stdout_content, stderr_content) = match stream {
+        "stdout" => (stdout, String::new()),
+        "stderr" => (String::new(), stderr),
+        "both" => (stdout, stderr),
+        _ => return Err(format!("invalid stream: {}. Use 'stdout', 'stderr', or 'both'", stream)),
+    };
+
+    Ok(BackgroundProcessOutput {
+        process_id: process.process_id,
+        status: process.status.to_string(),
+        stdout: truncate_output(&stdout_content),
+        stderr: truncate_output(&stderr_content),
+        stdout_size: process.stdout_size,
+        stderr_size: process.stderr_size,
+    })
+}
+
+/// Remove a completed background process from tracking.
+pub fn remove_background_process(process_id: &str) -> Result<BackgroundProcessInfo, String> {
+    let manager = process_manager();
+    let process = manager.remove(process_id)?;
+    Ok(BackgroundProcessInfo {
+        process_id: process.process_id,
+        command: process.command,
+        description: process.description,
+        status: process.status.to_string(),
+        pid: process.pid,
+        exit_code: process.exit_code,
+        created_at: process.created_at,
+        updated_at: process.updated_at,
+        stdout_size: process.stdout_size,
+        stderr_size: process.stderr_size,
+    })
+}
+
+/// Refresh all running background processes.
+pub fn refresh_all_background_processes() {
+    let manager = process_manager();
+    manager.refresh_all();
+}
+
+// ============================================================================
+// Extended Background Process Control API
+// ============================================================================
+
+use crate::background_process::{
+    ChildProcessInfo, IncrementalOutput, OutputPosition, ProcessSignal, ResourceUsage,
+};
+
+/// Result of sending a signal to a process.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalResult {
+    #[serde(rename = "processId")]
+    pub process_id: String,
+    pub signal: String,
+    pub status: String,
+    pub message: String,
+}
+
+/// Send a signal to a background process.
+///
+/// # Arguments
+/// * `process_id` - The process ID
+/// * `signal` - The signal to send (e.g., "SIGINT", "SIGTERM", "SIGKILL", "SIGSTOP", "SIGCONT", "SIGUSR1", "SIGUSR2", "SIGHUP")
+pub fn send_signal_to_process(process_id: &str, signal: &str) -> Result<SignalResult, String> {
+    let signal_enum = match signal.to_uppercase().as_str() {
+        "SIGINT" | "INT" => ProcessSignal::Interrupt,
+        "SIGTERM" | "TERM" => ProcessSignal::Terminate,
+        "SIGKILL" | "KILL" => ProcessSignal::Kill,
+        "SIGSTOP" | "STOP" => ProcessSignal::Stop,
+        "SIGCONT" | "CONT" => ProcessSignal::Continue,
+        "SIGUSR1" | "USR1" => ProcessSignal::User1,
+        "SIGUSR2" | "USR2" => ProcessSignal::User2,
+        "SIGHUP" | "HUP" => ProcessSignal::Hangup,
+        _ => return Err(format!("unknown signal: {}", signal)),
+    };
+
+    let manager = process_manager();
+    let process = manager.send_signal(process_id, signal_enum)?;
+
+    Ok(SignalResult {
+        process_id: process.process_id,
+        signal: signal.to_uppercase(),
+        status: process.status.to_string(),
+        message: format!("Signal {} sent successfully", signal.to_uppercase()),
+    })
+}
+
+/// Pause a running background process (send SIGSTOP).
+pub fn pause_background_process(process_id: &str) -> Result<BackgroundProcessInfo, String> {
+    let manager = process_manager();
+    let process = manager.pause(process_id)?;
+    Ok(BackgroundProcessInfo {
+        process_id: process.process_id,
+        command: process.command,
+        description: process.description,
+        status: process.status.to_string(),
+        pid: process.pid,
+        exit_code: process.exit_code,
+        created_at: process.created_at,
+        updated_at: process.updated_at,
+        stdout_size: process.stdout_size,
+        stderr_size: process.stderr_size,
+    })
+}
+
+/// Resume a paused background process (send SIGCONT).
+pub fn resume_background_process(process_id: &str) -> Result<BackgroundProcessInfo, String> {
+    let manager = process_manager();
+    let process = manager.resume(process_id)?;
+    Ok(BackgroundProcessInfo {
+        process_id: process.process_id,
+        command: process.command,
+        description: process.description,
+        status: process.status.to_string(),
+        pid: process.pid,
+        exit_code: process.exit_code,
+        created_at: process.created_at,
+        updated_at: process.updated_at,
+        stdout_size: process.stdout_size,
+        stderr_size: process.stderr_size,
+    })
+}
+
+/// Get resource usage for a running background process.
+pub fn get_process_resource_usage(process_id: &str) -> Result<ResourceUsage, String> {
+    let manager = process_manager();
+    manager.get_resource_usage(process_id)
+}
+
+/// Get incremental output from a background process.
+///
+/// This reads new output since the last read position, enabling efficient
+/// streaming of process output without re-reading the entire file.
+///
+/// # Arguments
+/// * `process_id` - The process ID
+/// * `stream` - Which stream to read ("stdout" or "stderr")
+/// * `position` - Optional previous position to continue from
+pub fn get_incremental_output(
+    process_id: &str,
+    stream: &str,
+    position: Option<OutputPosition>,
+) -> Result<IncrementalOutput, String> {
+    let manager = process_manager();
+    manager.get_incremental_output(process_id, stream, position)
+}
+
+/// Wait for a background process to complete.
+///
+/// Blocks until the process finishes or the timeout is reached.
+///
+/// # Arguments
+/// * `process_id` - The process ID
+/// * `timeout_ms` - Optional timeout in milliseconds
+/// * `block` - Whether to block (true) or return immediately if still running (false)
+pub fn wait_for_process(
+    process_id: &str,
+    timeout_ms: Option<u64>,
+    block: bool,
+) -> Result<BackgroundProcessInfo, String> {
+    let manager = process_manager();
+
+    let process = if block {
+        manager.wait_for_completion(process_id, timeout_ms)?
+    } else {
+        manager.refresh_status(process_id)?
+    };
+
+    Ok(BackgroundProcessInfo {
+        process_id: process.process_id,
+        command: process.command,
+        description: process.description,
+        status: process.status.to_string(),
+        pid: process.pid,
+        exit_code: process.exit_code,
+        created_at: process.created_at,
+        updated_at: process.updated_at,
+        stdout_size: process.stdout_size,
+        stderr_size: process.stderr_size,
+    })
+}
+
+/// Get child processes of a background process.
+pub fn get_child_processes(process_id: &str) -> Result<Vec<ChildProcessInfo>, String> {
+    let manager = process_manager();
+    manager.get_child_processes(process_id)
+}
+
+/// Create a new process group for managing related processes together.
+pub fn create_process_group(group_name: &str) -> Result<(), String> {
+    let manager = process_manager();
+    manager.create_process_group(group_name)
+}
+
+/// List all process groups.
+pub fn list_process_groups() -> Vec<String> {
+    let manager = process_manager();
+    manager.list_process_groups()
+}
+
+/// Get all processes in a specific group.
+pub fn get_process_group(group_name: &str) -> Option<Vec<BackgroundProcessInfo>> {
+    let manager = process_manager();
+    manager.get_process_group(group_name).map(|processes| {
+        processes
+            .into_iter()
+            .map(|p| BackgroundProcessInfo {
+                process_id: p.process_id,
+                command: p.command,
+                description: p.description,
+                status: p.status.to_string(),
+                pid: p.pid,
+                exit_code: p.exit_code,
+                created_at: p.created_at,
+                updated_at: p.updated_at,
+                stdout_size: p.stdout_size,
+                stderr_size: p.stderr_size,
+            })
+            .collect()
+    })
+}
+
+/// Stop all processes in a group.
+pub fn stop_process_group(group_name: &str) -> Result<Vec<BackgroundProcessInfo>, String> {
+    let manager = process_manager();
+    let processes = manager.stop_process_group(group_name)?;
+    Ok(processes
+        .into_iter()
+        .map(|p| BackgroundProcessInfo {
+            process_id: p.process_id,
+            command: p.command,
+            description: p.description,
+            status: p.status.to_string(),
+            pid: p.pid,
+            exit_code: p.exit_code,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            stdout_size: p.stdout_size,
+            stderr_size: p.stderr_size,
+        })
+        .collect())
 }
 
 #[cfg(test)]

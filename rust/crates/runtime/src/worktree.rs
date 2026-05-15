@@ -332,14 +332,19 @@ pub fn enter_worktree(cwd: &Path, name: &str) -> Result<WorktreeContext, Worktre
 
 /// Generate a random worktree name.
 ///
-/// Uses a simple alphanumeric suffix to create unique names.
+/// Uses timestamp combined with an atomic counter to ensure uniqueness.
 #[must_use]
 pub fn generate_worktree_name() -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+    
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos());
-    format!("wt-{nanos:x}")
+        .map_or(0, |d| d.as_nanos() as u64);
+    let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!("wt-{:x}-{}", nanos, counter)
 }
 
 #[cfg(test)]
