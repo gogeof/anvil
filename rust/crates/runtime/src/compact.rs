@@ -21,6 +21,23 @@ impl Default for CompactionConfig {
     }
 }
 
+impl CompactionConfig {
+    /// 根据模型动态调整上下文限制
+    pub fn for_model(model: &str) -> Self {
+        // DeepSeek 支持 1M context，使用更大的限制
+        let max_tokens = if model.to_lowercase().contains("deepseek") {
+            100_000 // DeepSeek: 100K tokens
+        } else {
+            10_000 // 其他模型: 10K tokens
+        };
+        
+        Self {
+            preserve_recent_messages: 4,
+            max_estimated_tokens: max_tokens,
+        }
+    }
+}
+
 /// Result of compacting a session into a summary plus preserved tail messages.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompactionResult {

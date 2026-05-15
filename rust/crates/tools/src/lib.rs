@@ -5116,13 +5116,14 @@ fn execute_tool_search(input: ToolSearchInput) -> ToolSearchOutput {
     GlobalToolRegistry::builtin().search(&input.query, input.max_results.unwrap_or(5), None, None)
 }
 
+/// ToolSpec for deferred tools (filtered out of MVP, available via ToolSearch)
 fn deferred_tool_specs() -> Vec<ToolSpec> {
     mvp_tool_specs()
         .into_iter()
         .filter(|spec| {
             !matches!(
                 spec.name,
-                "bash" | "read_file" | "write_file" | "edit_file" | "glob_search" | "grep_search"
+                "bash" | "read_file" | "read_function" | "write_file" | "edit_file" | "glob_search" | "grep_search"
             )
         })
         .collect()

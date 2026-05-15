@@ -52,6 +52,7 @@ pub mod fuzzy_match;
 pub mod smart_summary;
 pub mod code_formatter;
 pub mod git_diff;
+pub mod optimized_tools;
 pub mod telemetry;
 pub mod background_judge;
 pub mod perf;
