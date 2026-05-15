@@ -1,0 +1,35 @@
+{
+  "description": "执行能力 - 长时间运行任务测试",
+  "tasks": [
+    {
+      "id": "exec-001",
+      "type": "background",
+      "command": "cargo build --release",
+      "cwd": "rust",
+      "expected_duration_range": "30s-5min",
+      "description": "后台编译 release 版本",
+      "success_criteria": "不阻塞 REPL，可查看日志"
+    },
+    {
+      "id": "exec-002",
+      "type": "background",
+      "command": "cargo test",
+      "cwd": "rust",
+      "expected_duration_range": "10s-2min",
+      "description": "后台运行测试",
+      "success_criteria": "不阻塞 REPL，测试结果可查询"
+    },
+    {
+      "id": "exec-003",
+      "type": "pty",
+      "command": "vim --version",
+      "description": "PTY 支持 - 交互式命令",
+      "success_criteria": "能执行并返回结果"
+    }
+  ],
+  "success_criteria": {
+    "background_support": true,
+    "pty_support": true,
+    "timeout_graceful_termination": 1.0
+  }
+}

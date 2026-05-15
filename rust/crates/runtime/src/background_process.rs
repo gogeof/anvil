@@ -798,7 +798,7 @@ impl BackgroundProcessManager {
         let mut inner = self.inner.lock().expect("manager lock poisoned");
         if inner.output_dir.as_os_str().is_empty() {
             // Use a default temp directory
-            inner.output_dir = std::env::temp_dir().join(".claw-background");
+            inner.output_dir = std::env::temp_dir().join(".anvil").join("background");
         }
         std::fs::create_dir_all(&inner.output_dir)?;
         Ok(inner.output_dir.clone())

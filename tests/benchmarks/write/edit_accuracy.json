@@ -1,0 +1,30 @@
+{
+  "description": "编写能力 - 编辑准确率测试",
+  "tasks": [
+    {
+      "id": "edit-001",
+      "type": "edit_file",
+      "description": "精确匹配编辑",
+      "difficulty": "easy",
+      "expected_success": true
+    },
+    {
+      "id": "edit-002",
+      "type": "edit_file",
+      "description": "空白差异容忍（多余空格/缩进）",
+      "difficulty": "medium",
+      "expected_success": true
+    },
+    {
+      "id": "edit-003",
+      "type": "edit_file",
+      "description": "模糊匹配（小差异容忍）",
+      "difficulty": "hard",
+      "expected_success": true
+    }
+  ],
+  "success_criteria": {
+    "edit_success_rate": 0.90,
+    "fuzzy_match_rate": 0.50
+  }
+}

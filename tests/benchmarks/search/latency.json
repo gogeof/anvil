@@ -1,0 +1,34 @@
+{
+  "description": "搜索能力延迟测试",
+  "tasks": [
+    {
+      "id": "search-001",
+      "type": "grep_search",
+      "pattern": "fn main",
+      "path": "rust/crates",
+      "expected_max_latency_ms": 50,
+      "description": "在当前项目中搜索 fn main"
+    },
+    {
+      "id": "search-002", 
+      "type": "grep_search",
+      "pattern": "impl.*for",
+      "path": "rust/crates/runtime/src",
+      "expected_max_latency_ms": 100,
+      "description": "搜索 runtime crate 中的 trait 实现"
+    },
+    {
+      "id": "search-003",
+      "type": "file_search",
+      "pattern": "*.rs",
+      "path": "rust/crates",
+      "expected_max_latency_ms": 50,
+      "description": "列出所有 Rust 文件"
+    }
+  ],
+  "success_criteria": {
+    "p50_latency_ms": 50,
+    "p95_latency_ms": 100,
+    "success_rate": 0.95
+  }
+}

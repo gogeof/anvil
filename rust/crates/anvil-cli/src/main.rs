@@ -69,7 +69,7 @@ enum ModelSource {
     Flag,
     /// ANTHROPIC_MODEL environment variable (when no flag was passed).
     Env,
-    /// `model` key in `.claw.json` / `.anvil/settings.json` (when neither
+    /// `model` key in `.anvil/settings.json` (when neither
     /// flag nor env set it).
     Config,
     /// Compiled-in DEFAULT_MODEL fallback.
@@ -1184,7 +1184,7 @@ fn parse_args(args: &[String]) -> Result<CliAction, String> {
             })
         }
         // #146: `config` is pure-local read-only introspection (merges
-        // `.claw.json` + `.anvil/settings.json` from disk, no network, no
+        // `.anvil/settings.json` from disk, no network, no
         // state mutation). Previously callers had to spin up a session with
         // `claw --resume SESSION.jsonl /config` to see their own config,
         // which is synthetic friction. Accepts an optional section name
@@ -3376,7 +3376,7 @@ struct StatusContext {
     git_summary: GitWorkspaceSummary,
     session_lifecycle: SessionLifecycleSummary,
     sandbox_status: runtime::SandboxStatus,
-    /// #143: when `.claw.json` (or another loaded config file) fails to parse,
+    /// #143: when `.anvil/settings.json` (or another loaded config file) fails to parse,
     /// we capture the parse error here and still populate every field that
     /// doesn't depend on runtime config (workspace, git, sandbox defaults,
     /// discovery counts). Top-level JSON output then reports
@@ -4214,6 +4214,14 @@ fn run_resume_command(
                     "cache_read_input_tokens": usage.cache_read_input_tokens,
                     "total_tokens": usage.total_tokens(),
                 })),
+            })
+        }
+        SlashCommand::Metrics => {
+            let report = runtime::telemetry::Telemetry::new().weekly_report();
+            Ok(ResumeCommandOutcome {
+                session: session.clone(),
+                message: Some(report),
+                json: Some(serde_json::json!({"kind": "metrics"})),
             })
         }
         SlashCommand::History { count } => {
@@ -5378,9 +5386,9 @@ impl LiveCli {
                         .get("output")
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
-                    // Truncate long output for summary display
-                    let trimmed = if output.len() > 120 {
-                        format!("{}…", &output[..120])
+                    // Truncate long output for summary display (UTF-8 safe)
+                    let trimmed = if output.chars().count() > 120 {
+                        format!("{}…", output.chars().take(120).collect::<String>())
                     } else {
                         output.to_string()
                     };
@@ -5628,6 +5636,10 @@ impl LiveCli {
                 println!("{}", format_cost_report(usage));
                 false
             }
+            SlashCommand::Metrics => {
+                println!("{}", runtime::telemetry::Telemetry::new().weekly_report());
+                false
+            }
             SlashCommand::Context { .. } => {
                 self.print_context();
                 false
@@ -5708,9 +5720,10 @@ impl LiveCli {
     fn format_status_header(&self) -> String {
         let model_name = &self.model;
         let used_tokens = self.runtime.estimated_tokens();
-        let max_tokens = model_token_limit(model_name)
+        let limit_result = model_token_limit(model_name);
+        let max_tokens = limit_result
             .map(|limit| limit.context_window_tokens as usize)
-            .unwrap_or(0);
+            .unwrap_or(200_000);
         let pct = if max_tokens > 0 {
             (used_tokens as u64 * 100) / max_tokens as u64
         } else {
@@ -7216,7 +7229,7 @@ fn render_help_topic(topic: LocalHelpTopic) -> String {
             .to_string(),
         LocalHelpTopic::Init => "Init
   Usage            anvil init [--output-format <format>]
-  Purpose          create .anvil/, .claw.json, .gitignore, and AGENTS.md in the current project
+  Purpose          create .anvil/, settings.json, .gitignore, and AGENTS.md in the current project
   Output           list of created vs. skipped files (idempotent: safe to re-run)
   Formats          text (default), json
   Related          anvil status · anvil doctor"
@@ -9551,7 +9564,6 @@ const STUB_COMMANDS: &[&str] = &[
     "rate-limit",
     "changelog",
     "diagnostics",
-    "metrics",
     "tool-details",
     "focus",
     "unfocus",
@@ -12029,9 +12041,10 @@ mod tests {
         let root = temp_dir();
         let cwd = root.join("project-with-malformed-mcp");
         std::fs::create_dir_all(&cwd).expect("project dir should exist");
+        std::fs::create_dir_all(cwd.join(".anvil")).expect("config dir should exist");
         // One valid server + one malformed entry missing `command`.
         std::fs::write(
-            cwd.join(".claw.json"),
+            cwd.join(".anvil").join("settings.json"),
             r#"{
   "mcpServers": {
     "everything": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-everything"]},
@@ -12040,7 +12053,7 @@ mod tests {
 }
 "#,
         )
-        .expect("write malformed .claw.json");
+        .expect("write malformed settings.json");
 
         let context = with_current_dir(&cwd, || {
             super::status_context(None, None)

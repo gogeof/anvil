@@ -139,7 +139,7 @@ fn config_command_loads_defaults_from_standard_config_locations() {
 
     fs::write(config_home.join("settings.json"), r#"{"model":"haiku"}"#)
         .expect("write user settings");
-    fs::write(temp_dir.join(".claw.json"), r#"{"model":"sonnet"}"#)
+    fs::write(temp_dir.join(".anvil").join("settings.json"), r#"{"model":"sonnet"}"#)
         .expect("write project settings");
     fs::write(
         temp_dir.join(".anvil").join("settings.local.json"),
@@ -173,7 +173,7 @@ fn config_command_loads_defaults_from_standard_config_locations() {
             .to_str()
             .expect("utf8 path")
     ));
-    assert!(stdout.contains(temp_dir.join(".claw.json").to_str().expect("utf8 path")));
+    assert!(stdout.contains(temp_dir.join(".anvil").join("settings.json").to_str().expect("utf8 path")));
     assert!(stdout.contains(
         temp_dir
             .join(".anvil")

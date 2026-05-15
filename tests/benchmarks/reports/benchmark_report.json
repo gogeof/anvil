@@ -1,0 +1,192 @@
+{
+  "metadata": {
+    "generated_at": "2026-05-15T14:16:33.025254+00:00",
+    "project_root": "/Users/limiancai/anvil-main"
+  },
+  "overall": {
+    "total_tasks": 12,
+    "passed": 12,
+    "failed": 0,
+    "errors": 0,
+    "success_rate": 1.0,
+    "all_suites_pass": true
+  },
+  "suites": {
+    "search": {
+      "description": "搜索能力延迟测试",
+      "pass": true,
+      "passed": 3,
+      "failed": 0,
+      "errors": 0,
+      "total": 3,
+      "success_rate": 1.0,
+      "tasks": [
+        {
+          "id": "search-001",
+          "description": "在当前项目中搜索 fn main",
+          "status": "pass",
+          "measured_value": 42.847042000000016,
+          "measured_unit": "ms",
+          "threshold": "≤50ms",
+          "threshold_passed": true,
+          "details": "耗时: 42.8ms, 匹配数: 10",
+          "duration_ms": 42.87
+        },
+        {
+          "id": "search-002",
+          "description": "搜索 runtime crate 中的 trait 实现",
+          "status": "pass",
+          "measured_value": 13.4735,
+          "measured_unit": "ms",
+          "threshold": "≤100ms",
+          "threshold_passed": true,
+          "details": "耗时: 13.5ms, 匹配数: 100",
+          "duration_ms": 13.54
+        },
+        {
+          "id": "search-003",
+          "description": "列出所有 Rust 文件",
+          "status": "pass",
+          "measured_value": 0.6839160000000066,
+          "measured_unit": "ms",
+          "threshold": "≤50ms",
+          "threshold_passed": true,
+          "details": "耗时: 0.7ms, 匹配数: 90",
+          "duration_ms": 0.72
+        }
+      ]
+    },
+    "write": {
+      "description": "编写能力 - 编辑准确率测试",
+      "pass": true,
+      "passed": 3,
+      "failed": 0,
+      "errors": 0,
+      "total": 3,
+      "success_rate": 1.0,
+      "tasks": [
+        {
+          "id": "edit-001",
+          "description": "精确匹配编辑",
+          "status": "pass",
+          "measured_value": 1.0,
+          "measured_unit": "bool",
+          "threshold": "expected_success=True",
+          "threshold_passed": true,
+          "details": "difficulty=easy, expected=True, got=True",
+          "duration_ms": 0.19
+        },
+        {
+          "id": "edit-002",
+          "description": "空白差异容忍（多余空格/缩进）",
+          "status": "pass",
+          "measured_value": 1.0,
+          "measured_unit": "bool",
+          "threshold": "expected_success=True",
+          "threshold_passed": true,
+          "details": "difficulty=medium, expected=True, got=True",
+          "duration_ms": 0.15
+        },
+        {
+          "id": "edit-003",
+          "description": "模糊匹配（小差异容忍）",
+          "status": "pass",
+          "measured_value": 1.0,
+          "measured_unit": "bool",
+          "threshold": "expected_success=True",
+          "threshold_passed": true,
+          "details": "difficulty=hard, expected=True, got=True",
+          "duration_ms": 0.19
+        }
+      ]
+    },
+    "execute": {
+      "description": "执行能力 - 长时间运行任务测试",
+      "pass": true,
+      "passed": 3,
+      "failed": 0,
+      "errors": 0,
+      "total": 3,
+      "success_rate": 1.0,
+      "tasks": [
+        {
+          "id": "exec-001",
+          "description": "后台编译 release 版本",
+          "status": "pass",
+          "measured_value": 10004.329791,
+          "measured_unit": "ms",
+          "threshold": "不阻塞 REPL，可查看日志",
+          "threshold_passed": true,
+          "details": "timeout(10s), partial_output='...'",
+          "duration_ms": 10004.33
+        },
+        {
+          "id": "exec-002",
+          "description": "后台运行测试",
+          "status": "pass",
+          "measured_value": 10009.709916999998,
+          "measured_unit": "ms",
+          "threshold": "不阻塞 REPL，测试结果可查询",
+          "threshold_passed": true,
+          "details": "timeout(10s), partial_output='...'",
+          "duration_ms": 10009.71
+        },
+        {
+          "id": "exec-003",
+          "description": "PTY 支持 - 交互式命令",
+          "status": "pass",
+          "measured_value": 0.0,
+          "measured_unit": "exit_code",
+          "threshold": "能执行并返回结果",
+          "threshold_passed": true,
+          "details": "rc=0, stdout='VIM - Vi IMproved 9.0 (2022 Jun 28, compiled Feb 10 2024 02:03:17)\nmacOS version - arm64\nIncluded pa...'",
+          "duration_ms": 29.79
+        }
+      ]
+    },
+    "humaneval": {
+      "description": "HumanEval 编程基准测试任务集",
+      "pass": true,
+      "passed": 3,
+      "failed": 0,
+      "errors": 0,
+      "total": 3,
+      "success_rate": 1.0,
+      "tasks": [
+        {
+          "id": "HumanEval/0",
+          "description": "实现一个函数，判断两个字符串是否互为回文排列",
+          "status": "pass",
+          "measured_value": 100.0,
+          "measured_unit": "%",
+          "threshold": "pass_rate≥75%",
+          "threshold_passed": true,
+          "details": "passed 3/3 test cases",
+          "duration_ms": 0.01
+        },
+        {
+          "id": "HumanEval/1",
+          "description": "实现一个函数，找到列表中第二大的数字",
+          "status": "pass",
+          "measured_value": 100.0,
+          "measured_unit": "%",
+          "threshold": "pass_rate≥75%",
+          "threshold_passed": true,
+          "details": "passed 3/3 test cases",
+          "duration_ms": 0.01
+        },
+        {
+          "id": "HumanEval/2",
+          "description": "实现一个函数，将嵌套列表展平",
+          "status": "pass",
+          "measured_value": 100.0,
+          "measured_unit": "%",
+          "threshold": "pass_rate≥75%",
+          "threshold_passed": true,
+          "details": "passed 2/2 test cases",
+          "duration_ms": 0.01
+        }
+      ]
+    }
+  }
+}

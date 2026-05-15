@@ -1,0 +1,37 @@
+{
+  "description": "HumanEval 编程基准测试任务集",
+  "source": "https://github.com/openai/human-eval",
+  "tasks": [
+    {
+      "id": "HumanEval/0",
+      "prompt": "实现一个函数，判断两个字符串是否互为回文排列",
+      "test_cases": [
+        {"input": ["abc", "cba"], "expected": true},
+        {"input": ["aab", "aba"], "expected": true},
+        {"input": ["abc", "def"], "expected": false}
+      ]
+    },
+    {
+      "id": "HumanEval/1",
+      "prompt": "实现一个函数，找到列表中第二大的数字",
+      "test_cases": [
+        {"input": [1, 2, 3, 4, 5], "expected": 4},
+        {"input": [5, 5, 4, 3], "expected": 4},
+        {"input": [1], "expected": null}
+      ]
+    },
+    {
+      "id": "HumanEval/2",
+      "prompt": "实现一个函数，将嵌套列表展平",
+      "test_cases": [
+        {"input": [[1, 2], [3, 4]], "expected": [1, 2, 3, 4]},
+        {"input": [[1, [2, 3]], 4], "expected": [1, 2, 3, 4]}
+      ]
+    }
+  ],
+  "success_criteria": {
+    "pass_rate": 0.75,
+    "max_completion_time_minutes": 5,
+    "max_turns": 10
+  }
+}

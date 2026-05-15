@@ -48,6 +48,8 @@ pub mod team_cron_registry;
 pub mod test_runner;
 pub mod debug_tools;
 pub mod fuzzy_match;
+pub mod telemetry;
+pub mod background_judge;
 pub mod perf;
 pub mod pty;
 #[cfg(test)]
@@ -176,7 +178,7 @@ pub use session::{
 };
 pub use sse::{IncrementalSseParser, SseEvent};
 pub use stale_base::{
-    check_base_commit, format_stale_base_warning, read_claw_base_file, resolve_expected_base,
+    check_base_commit, format_stale_base_warning, read_base_commit, resolve_expected_base,
     BaseCommitSource, BaseCommitState,
 };
 pub use stale_branch::{

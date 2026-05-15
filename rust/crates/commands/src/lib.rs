@@ -1199,6 +1199,7 @@ pub enum SlashCommand {
     Batch {
         description: Option<String>,
     },
+    Metrics,
     Unknown(String),
 }
 
@@ -1519,6 +1520,10 @@ pub fn validate_slash_command_input(
         "batch" => SlashCommand::Batch {
             description: remainder,
         },
+        "metrics" => {
+            validate_no_args(command, &args)?;
+            SlashCommand::Metrics
+        }
         other => SlashCommand::Unknown(other.to_string()),
     }))
 }
@@ -4328,6 +4333,7 @@ pub fn handle_slash_command(
         | SlashCommand::History { .. }
         | SlashCommand::Bug { .. }
         | SlashCommand::Batch { .. }
+        | SlashCommand::Metrics
         | SlashCommand::Unknown(_) => None,
     }
 }

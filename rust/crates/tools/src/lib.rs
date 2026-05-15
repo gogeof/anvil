@@ -6881,12 +6881,12 @@ mod tests {
         use std::fs;
         // Write a .anvil/settings.json in a temp dir with trustedRoots
         let worktree = temp_path("config-trust-worktree");
-        let claw_dir = worktree.join(".anvil");
-        fs::create_dir_all(&claw_dir).expect("create .claw dir");
+        let anvil_dir = worktree.join(".anvil");
+        fs::create_dir_all(&anvil_dir).expect("create .anvil dir");
         // Use the actual OS temp dir so the worktree path matches the allowlist
         let tmp_root = std::env::temp_dir().to_str().expect("utf-8").to_string();
         let settings = format!("{{\"trustedRoots\": [\"{tmp_root}\"]}}");
-        fs::write(claw_dir.join("settings.json"), settings).expect("write settings");
+        fs::write(anvil_dir.join("settings.json"), settings).expect("write settings");
 
         // WorkerCreate with no per-call trusted_roots — config should supply them
         let cwd = worktree.to_str().expect("valid utf-8").to_string();

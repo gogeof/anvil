@@ -22,10 +22,10 @@ pub enum BaseCommitSource {
     File(String),
 }
 
-/// Read the `.claw-base` file from the given directory and return the trimmed
-/// commit hash, or `None` when the file is absent or empty.
-pub fn read_claw_base_file(cwd: &Path) -> Option<String> {
-    let path = cwd.join(".claw-base");
+/// Read the `.anvil-base` file from the given directory and return the trimmed
+/// base commit SHA, or `None` if the file doesn't exist or is empty.
+pub fn read_base_commit(cwd: &std::path::Path) -> Option<String> {
+    let path = cwd.join(".anvil-base");
     let content = std::fs::read_to_string(path).ok()?;
     let trimmed = content.trim();
     if trimmed.is_empty() {
@@ -36,7 +36,7 @@ pub fn read_claw_base_file(cwd: &Path) -> Option<String> {
 }
 
 /// Resolve the expected base commit: prefer the `--base-commit` flag value,
-/// fall back to reading `.claw-base` from `cwd`.
+/// fall back to reading `.anvil-base` from `cwd`.
 pub fn resolve_expected_base(flag_value: Option<&str>, cwd: &Path) -> Option<BaseCommitSource> {
     if let Some(value) = flag_value {
         let trimmed = value.trim();
@@ -44,7 +44,7 @@ pub fn resolve_expected_base(flag_value: Option<&str>, cwd: &Path) -> Option<Bas
             return Some(BaseCommitSource::Flag(trimmed.to_string()));
         }
     }
-    read_claw_base_file(cwd).map(BaseCommitSource::File)
+    read_base_commit(cwd).map(BaseCommitSource::File)
 }
 
 /// Verify that the worktree HEAD matches `expected_base`.
@@ -254,10 +254,10 @@ mod tests {
         // given
         let root = temp_dir();
         fs::create_dir_all(&root).expect("create dir");
-        fs::write(root.join(".claw-base"), "abc1234def5678\n").expect("write .claw-base");
+        fs::write(root.join(".anvil-base"), "abc1234def5678\n").expect("write .anvil-base");
 
         // when
-        let value = read_claw_base_file(&root);
+        let value = read_base_commit(&root);
 
         // then
         assert_eq!(value, Some("abc1234def5678".to_string()));
@@ -271,7 +271,7 @@ mod tests {
         fs::create_dir_all(&root).expect("create dir");
 
         // when
-        let value = read_claw_base_file(&root);
+        let value = read_base_commit(&root);
 
         // then
         assert!(value.is_none());
@@ -283,10 +283,10 @@ mod tests {
         // given
         let root = temp_dir();
         fs::create_dir_all(&root).expect("create dir");
-        fs::write(root.join(".claw-base"), "  \n").expect("write empty .claw-base");
+        fs::write(root.join(".anvil-base"), "  \n").expect("write empty .anvil-base");
 
         // when
-        let value = read_claw_base_file(&root);
+        let value = read_base_commit(&root);
 
         // then
         assert!(value.is_none());
@@ -298,7 +298,7 @@ mod tests {
         // given
         let root = temp_dir();
         fs::create_dir_all(&root).expect("create dir");
-        fs::write(root.join(".claw-base"), "from_file\n").expect("write .claw-base");
+        fs::write(root.join(".anvil-base"), "from_file\n").expect("write .anvil-base");
 
         // when
         let source = resolve_expected_base(Some("from_flag"), &root);
@@ -316,7 +316,7 @@ mod tests {
         // given
         let root = temp_dir();
         fs::create_dir_all(&root).expect("create dir");
-        fs::write(root.join(".claw-base"), "from_file\n").expect("write .claw-base");
+        fs::write(root.join(".anvil-base"), "from_file\n").expect("write .anvil-base");
 
         // when
         let source = resolve_expected_base(None, &root);
@@ -391,7 +391,7 @@ mod tests {
         let root = temp_dir();
         init_repo(&root);
         let sha = head_sha(&root);
-        fs::write(root.join(".claw-base"), format!("{sha}\n")).expect("write .claw-base");
+        fs::write(root.join(".anvil-base"), format!("{sha}\n")).expect("write .anvil-base");
         let source = resolve_expected_base(None, &root);
 
         // when
@@ -408,7 +408,7 @@ mod tests {
         let root = temp_dir();
         init_repo(&root);
         let old_sha = head_sha(&root);
-        fs::write(root.join(".claw-base"), format!("{old_sha}\n")).expect("write .claw-base");
+        fs::write(root.join(".anvil-base"), format!("{old_sha}\n")).expect("write .anvil-base");
         commit_file(&root, "new.txt", "advance head");
         let new_sha = head_sha(&root);
         let source = resolve_expected_base(None, &root);

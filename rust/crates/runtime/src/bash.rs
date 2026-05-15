@@ -3,13 +3,14 @@ use std::env;
 use std::io;
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use tokio::process::Command as TokioCommand;
 use tokio::runtime::Builder;
 use tokio::time::timeout;
 
+use crate::background_judge::{BackgroundDecision, BackgroundJudge};
 use crate::background_process::{
     BackgroundProcessManager, ProcessStatus, ResourceLimits, RestartPolicy,
 };
@@ -18,14 +19,27 @@ use crate::sandbox::{
     build_linux_sandbox_command, resolve_sandbox_status_for_request, FilesystemIsolationMode,
     SandboxConfig, SandboxStatus,
 };
+use crate::telemetry::Telemetry;
 use crate::ConfigLoader;
 
 /// Global background process manager instance.
 static PROCESS_MANAGER: OnceLock<BackgroundProcessManager> = OnceLock::new();
 
+/// Global background judge instance for auto-detecting background execution.
+static BACKGROUND_JUDGE: OnceLock<std::sync::Mutex<BackgroundJudge>> = OnceLock::new();
+
 /// Get the global process manager, initializing if necessary.
 pub fn process_manager() -> &'static BackgroundProcessManager {
     PROCESS_MANAGER.get_or_init(BackgroundProcessManager::new)
+}
+
+/// Get the global background judge, initializing if necessary.
+pub fn background_judge() -> &'static std::sync::Mutex<BackgroundJudge> {
+    BACKGROUND_JUDGE.get_or_init(|| {
+        let judge = BackgroundJudge::default()
+            .with_history_path(BackgroundJudge::default_history_path());
+        std::sync::Mutex::new(judge)
+    })
 }
 
 // ============================================================================
@@ -208,12 +222,70 @@ pub fn execute_bash(input: BashCommandInput) -> io::Result<BashCommandOutput> {
     let cwd = env::current_dir()?;
     let sandbox_status = sandbox_status_for_input(&input, &cwd);
 
-    if input.run_in_background.unwrap_or(false) {
-        return execute_bash_background(input, sandbox_status, cwd);
+    // Check if user explicitly requested background execution
+    let user_requested_background = input.run_in_background.unwrap_or(false);
+
+    // Auto-detect if command should run in background
+    let auto_background_decision = if !user_requested_background {
+        let judge = background_judge();
+        let judge_guard = judge.lock().unwrap();
+        judge_guard.should_run_background(&input.command)
+    } else {
+        BackgroundDecision::Always
+    };
+
+    // Decide whether to run in background
+    let should_run_background = user_requested_background
+        || matches!(auto_background_decision, BackgroundDecision::Always);
+
+    let start_time = Instant::now();
+    let result = if should_run_background {
+        execute_bash_background(input.clone(), sandbox_status.clone(), cwd.clone())
+    } else {
+        let runtime = Builder::new_current_thread().enable_all().build()?;
+        runtime.block_on(execute_bash_async(
+            input.clone(),
+            sandbox_status.clone(),
+            cwd.clone(),
+        ))
+    };
+
+    // Record execution time for learning
+    let duration_ms = start_time.elapsed().as_millis() as u64;
+    let exit_code = match &result {
+        Ok(output) => output.return_code_interpretation.as_ref().and_then(|s| {
+            s.strip_prefix("exit_code:")
+                .and_then(|n| n.parse::<i32>().ok())
+        }).unwrap_or(0),
+        Err(_) => 1,
+    };
+
+    // Record telemetry for metrics
+    let success = exit_code == 0;
+    let mut context = HashMap::new();
+    context.insert("exit_code".to_string(), serde_json::json!(exit_code));
+    context.insert("auto_background".to_string(), serde_json::json!(!user_requested_background && should_run_background));
+    Telemetry::new().record(
+        "bash",
+        Duration::from_millis(duration_ms),
+        success,
+        context,
+    );
+
+    // Update execution history (async, don't block on error)
+    if let Ok(judge) = background_judge().lock() {
+        let mut judge = judge;
+        judge.record_execution(&input.command, duration_ms, exit_code);
+        let _ = judge.save_history();
     }
 
-    let runtime = Builder::new_current_thread().enable_all().build()?;
-    runtime.block_on(execute_bash_async(input, sandbox_status, cwd))
+    // Mark output with auto-background info
+    let mut result = result?;
+    if !user_requested_background && should_run_background {
+        result.assistant_auto_backgrounded = Some(true);
+    }
+
+    Ok(result)
 }
 
 /// Execute a command in the background with output capture.
@@ -222,7 +294,7 @@ fn execute_bash_background(
     sandbox_status: SandboxStatus,
     cwd: std::path::PathBuf,
 ) -> io::Result<BashCommandOutput> {
-    let output_dir = std::env::temp_dir().join(".claw-background");
+    let output_dir = std::env::temp_dir().join(".anvil").join("background");
     std::fs::create_dir_all(&output_dir)?;
 
     let manager = process_manager();
@@ -234,10 +306,12 @@ fn execute_bash_background(
         .unwrap_or_default()
         .as_nanos();
     let stdout_path = std::env::temp_dir()
-        .join(".claw-background")
+        .join(".anvil")
+        .join("background")
         .join(format!("bg_{}.stdout", timestamp));
     let stderr_path = std::env::temp_dir()
-        .join(".claw-background")
+        .join(".anvil")
+        .join("background")
         .join(format!("bg_{}.stderr", timestamp));
 
     // Create the output files
