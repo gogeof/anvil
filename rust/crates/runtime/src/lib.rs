@@ -42,7 +42,6 @@ mod sse;
 pub mod stale_base;
 pub mod stale_branch;
 pub mod summary_compression;
-pub mod syntax_highlight;
 pub mod task_packet;
 pub mod task_registry;
 pub mod team_cron_registry;
@@ -189,9 +188,6 @@ pub use task_packet::{validate_packet, TaskPacket, TaskPacketValidationError, Va
 pub use trust_resolver::{TrustConfig, TrustDecision, TrustEvent, TrustPolicy, TrustResolver};
 pub use usage::{
     format_usd, pricing_for_model, ModelPricing, TokenUsage, UsageCostEstimate, UsageTracker,
-};
-pub use syntax_highlight::{
-    detect_language, get_code_structure, highlight_code, CodeBlock, CodeBlockType,
 };
 pub use worker_boot::{
     Worker, WorkerEvent, WorkerEventKind, WorkerEventPayload, WorkerFailure, WorkerFailureKind,
