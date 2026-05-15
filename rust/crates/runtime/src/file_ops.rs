@@ -3,12 +3,15 @@ use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::sync::OnceLock;
+use std::time::{Duration, Instant};
 
 use glob::Pattern;
 use regex::RegexBuilder;
 use serde::{Deserialize, Serialize};
 use walkdir::{DirEntry, WalkDir};
+
+use crate::file_cache::{FileCache, cache_key};
 
 /// Maximum file size that can be read (10 MB).
 const MAX_READ_SIZE: u64 = 10 * 1024 * 1024;
@@ -181,13 +184,35 @@ pub struct GrepSearchOutput {
     pub applied_offset: Option<usize>,
 }
 
+/// 全局文件缓存实例（线程安全，最多缓存 100 个文件，每条 TTL 300 秒）
+const CACHE_TTL_SECS: u64 = 300;
+fn global_file_cache() -> &'static std::sync::Mutex<FileCache> {
+    static CACHE: OnceLock<std::sync::Mutex<FileCache>> = OnceLock::new();
+    CACHE.get_or_init(|| std::sync::Mutex::new(FileCache::new(100)))
+}
+
 /// Reads a text file and returns a line-windowed payload.
+///
+/// 集成语义缓存：先查缓存再读磁盘，读取后写入缓存（TTL: 300 秒）。
 pub fn read_file(
     path: &str,
     offset: Option<usize>,
     limit: Option<usize>,
 ) -> io::Result<ReadFileOutput> {
     let absolute_path = normalize_path(path)?;
+    let key = cache_key(&absolute_path.to_string_lossy(), offset, limit);
+
+    // 先查缓存
+    {
+        let cache = global_file_cache().lock().map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, format!("cache lock error: {e}"))
+        })?;
+        if let Some(cached) = cache.get(&key) {
+            if let Ok(val) = serde_json::from_str::<ReadFileOutput>(&cached) {
+                return Ok(val);
+            }
+        }
+    }
 
     // Check file size before reading
     let metadata = fs::metadata(&absolute_path)?;
@@ -218,7 +243,7 @@ pub fn read_file(
     });
     let selected = lines[start_index..end_index].join("\n");
 
-    Ok(ReadFileOutput {
+    let result = ReadFileOutput {
         kind: String::from("text"),
         file: TextFilePayload {
             file_path: absolute_path.to_string_lossy().into_owned(),
@@ -227,7 +252,16 @@ pub fn read_file(
             start_line: start_index.saturating_add(1),
             total_lines: lines.len(),
         },
-    })
+    };
+
+    // 读取后写入缓存
+    if let Ok(serialized) = serde_json::to_string(&result) {
+        if let Ok(mut cache) = global_file_cache().lock() {
+            cache.set(key, serialized, Duration::from_secs(CACHE_TTL_SECS));
+        }
+    }
+
+    Ok(result)
 }
 
 /// Replaces a file's contents and returns patch metadata.
