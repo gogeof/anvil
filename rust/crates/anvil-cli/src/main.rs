@@ -2319,7 +2319,7 @@ fn render_doctor_report() -> Result<DoctorReport, Box<dyn std::error::Error>> {
     let discovered_config = config_loader.discover();
     let project_context = ProjectContext::discover_with_git(&cwd, DEFAULT_DATE)?;
     let (project_root, git_branch) =
-        parse_git_status_metadata(project_context.git_status.as_deref());
+        parse_git_status_metadata_for(&cwd, project_context.git_status.as_deref());
     let git_summary = parse_git_workspace_summary(project_context.git_status.as_deref());
     let empty_config = runtime::RuntimeConfig::empty();
     let sandbox_config = config.as_ref().ok().unwrap_or(&empty_config);
@@ -6917,7 +6917,7 @@ fn status_context(
     };
     let project_context = ProjectContext::discover_with_git(&cwd, DEFAULT_DATE)?;
     let (project_root, git_branch) =
-        parse_git_status_metadata(project_context.git_status.as_deref());
+        parse_git_status_metadata_for(&cwd, project_context.git_status.as_deref());
     let git_summary = parse_git_workspace_summary(project_context.git_status.as_deref());
     Ok(StatusContext {
         cwd: cwd.clone(),
