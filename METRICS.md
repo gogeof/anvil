@@ -55,7 +55,7 @@ anvil 只解决编程问题。不做通用聊天、不做知识问答、不做�
 **优化方向（Phase 1）：**
 - ✅ 集成 ripgrep crate（性能 5-10x 提升，实际延迟 42.8ms P50 / 13.5ms 小规模搜索）
 - ✅ ~~添加符号索引（加速定义跳转）~~ → 已移除，使用 grep_search 直接实现
-- ✅ 支持增量搜索（边输入边搜索）→ `incremental_search.rs` 已实现 (调试中)
+- ✅ 支持增量搜索（边输入边搜索）→ `incremental_search.rs` 已实现 ✅ 已完成
 
 ---
 
@@ -72,7 +72,7 @@ anvil 只解决编程问题。不做通用聊天、不做知识问答、不做�
 
 **优化方向（Phase 1）：**
 - ⏳ 添加语法感知（识别函数/类/变量定义）→ 已移除，使用 grep_search 直接实现
-- ✅ 智能摘要（对大文件只读取关键部分）→ `smart_summary.rs` 已实现 (调试中)
+- ✅ 智能摘要（对大文件只读取关键部分）→ `smart_summary.rs` 已实现 ✅ 已完成
 
 ---
 
@@ -89,8 +89,8 @@ anvil 只解决编程问题。不做通用聊天、不做知识问答、不做�
 
 **优化方向（Phase 2）：**
 - ✅ 增强模糊匹配（Levenshtein 距离、AST diff）→ `fuzzy_match.rs` 已实现
-- ✅ 添加代码格式化（rustfmt/prettier）→ `code_formatter.rs` 已实现 (调试中)
-- ✅ 集成 git diff（可视化变更）→ `git_diff.rs` 已实现 (调试中)
+- ✅ 添加代码格式化（rustfmt/prettier）→ `code_formatter.rs` 已实现 ✅ 已完成
+- ✅ 集成 git diff（可视化变更）→ `git_diff.rs` 已实现 ✅ 已完成
 
 ---
 
