@@ -81,11 +81,21 @@ anvil 深度集成 DeepSeek 模型。以下是对 DeepSeek V4 系列在编程领
 - **长上下文编程** — 充分利用 DeepSeek V4 的 1M token 上下文处理大型项目
 - **推理驱动** — 启用 CoT 推理模式处理复杂编程任务
 - **工具调用优化** — 针对 DeepSeek 的工具调用习惯调优 system prompt
+- **函数级读取** — `read_function` 按函数/结构体粒度读取，大文件上下文节省 99%
+- **语义缓存** — 集成到 `read_file`，TTL 300s/缓存命中 < 1ms
 - **持续对比改进** — 内置 `anvil compare`，对比参考基准，数据驱动优化
 
 ---
 
 ## 新增功能
+
+### 优化模块集成（Phase 5）
+优化模块已集成到主流程，包含以下子模块：
+
+- **函数级读取（read_function）** — 按函数/结构体粒度读取文件，大文件上下文节省 99%
+- **语义缓存（semantic_cache）** — 集成到 read_file，TTL 300s 且 LRU 淘汰，缓存命中延迟 < 1ms
+- **DeepSeek 配置优化** — 使用 `for_model()` 动态调整上下文预算（DeepSeek: 100K tokens）
+- **并行工具执行（parallel_executor）** — 多工具并发调用，减少等待时间
 
 ### 自动后台判断（background_judge.rs）
 自动识别长时间运行的命令（编译、测试、部署等），将其放入后台执行，避免阻塞 REPL。基于规则引擎和历史数据自适应决策。
