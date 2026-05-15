@@ -71,7 +71,7 @@ pub use bash::{
     refresh_all_background_processes, refresh_background_process, remove_background_process,
     resume_background_process, send_signal_to_process, stop_background_process,
     stop_process_group, wait_for_process, BackgroundProcessInfo, BackgroundProcessList,
-    BackgroundProcessOutput, BashCommandInput, BashCommandOutput, SignalResult,
+    BashCommandInput, BashCommandOutput, SignalResult,
     StopProcessResult,
 };
 pub use background_process::{

@@ -42,34 +42,9 @@ pub fn background_judge() -> &'static std::sync::Mutex<BackgroundJudge> {
     })
 }
 
-// ============================================================================
-// Output Capture Configuration
-// ============================================================================
-
-/// Output capture mode for background processes.
-///
-/// Determines how process output (stdout/stderr) is captured and made available.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum OutputCaptureMode {
-    /// Traditional file-based output capture (default).
-    /// Output is written to temporary files and can be read later.
-    /// This is the most reliable mode and works in all environments.
-    #[default]
-    File,
-    /// In-memory pipe-based capture for real-time streaming.
-    /// Output is available immediately via subscription.
-    /// Requires async runtime and may have higher memory usage.
-    Pipe,
-    /// Both file and pipe capture enabled.
-    /// Provides both real-time streaming and persistent storage.
-    Hybrid,
-}
-
 /// Resource limits input in user-friendly format.
 ///
 /// These limits are applied to the process to constrain resource usage.
-/// On Unix systems, these are implemented via `prlimit` and `setrlimit`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourceLimitsInput {
@@ -106,24 +81,16 @@ pub struct RestartPolicyInput {
     /// Restart policy type.
     pub policy: RestartPolicy,
     /// Maximum restart attempts (ignored for Unlimited policy).
-    #[serde(default = "default_max_restart_attempts")]
+    #[serde(default)]
     pub max_attempts: u32,
     /// Delay between restart attempts in milliseconds.
     #[serde(default)]
     pub delay_ms: u64,
     /// Exponential backoff multiplier for delay (1.0 = no backoff).
-    #[serde(default = "default_backoff_multiplier")]
+    #[serde(default)]
     pub backoff_multiplier: f64,
     /// Maximum delay cap in milliseconds.
     pub max_delay_ms: Option<u64>,
-}
-
-fn default_max_restart_attempts() -> u32 {
-    3
-}
-
-fn default_backoff_multiplier() -> f64 {
-    2.0
 }
 
 impl Default for RestartPolicyInput {
@@ -146,22 +113,9 @@ impl Default for RestartPolicyInput {
 #[serde(transparent)]
 pub struct ProcessPriority(pub i32);
 
-impl ProcessPriority {
-    /// Lowest priority (nice 19 on Unix).
-    pub const LOWEST: Self = Self(-20);
-    /// Low priority.
-    pub const LOW: Self = Self(-10);
-    /// Normal priority (default).
-    pub const NORMAL: Self = Self(0);
-    /// High priority.
-    pub const HIGH: Self = Self(10);
-    /// Highest priority (nice -20 on Unix).
-    pub const HIGHEST: Self = Self(20);
-}
-
 impl Default for ProcessPriority {
     fn default() -> Self {
-        Self::NORMAL
+        Self(0)
     }
 }
 
@@ -660,20 +614,6 @@ pub struct BackgroundProcessInfo {
     pub stderr_size: u64,
 }
 
-/// Output from getting a background process's output.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BackgroundProcessOutput {
-    #[serde(rename = "processId")]
-    pub process_id: String,
-    pub status: String,
-    pub stdout: String,
-    pub stderr: String,
-    #[serde(rename = "stdoutSize")]
-    pub stdout_size: u64,
-    #[serde(rename = "stderrSize")]
-    pub stderr_size: u64,
-}
-
 /// Result of stopping a background process.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StopProcessResult {
@@ -770,42 +710,6 @@ pub fn refresh_background_process(process_id: &str) -> Result<BackgroundProcessI
         exit_code: process.exit_code,
         created_at: process.created_at,
         updated_at: process.updated_at,
-        stdout_size: process.stdout_size,
-        stderr_size: process.stderr_size,
-    })
-}
-
-/// Get the output from a background process.
-///
-/// # Arguments
-/// * `process_id` - The process ID
-/// * `stream` - Which output stream to read ("stdout", "stderr", or "both")
-/// * `tail` - Number of lines to read from the end (None = all)
-pub fn get_background_process_output(
-    process_id: &str,
-    stream: &str,
-    tail: Option<usize>,
-) -> Result<BackgroundProcessOutput, String> {
-    let manager = process_manager();
-
-    // Refresh status first to get latest output sizes
-    let process = manager.refresh_status(process_id)?;
-
-    let stdout = manager.get_output(process_id, "stdout", tail)?;
-    let stderr = manager.get_output(process_id, "stderr", tail)?;
-
-    let (stdout_content, stderr_content) = match stream {
-        "stdout" => (stdout, String::new()),
-        "stderr" => (String::new(), stderr),
-        "both" => (stdout, stderr),
-        _ => return Err(format!("invalid stream: {}. Use 'stdout', 'stderr', or 'both'", stream)),
-    };
-
-    Ok(BackgroundProcessOutput {
-        process_id: process.process_id,
-        status: process.status.to_string(),
-        stdout: truncate_output(&stdout_content),
-        stderr: truncate_output(&stderr_content),
         stdout_size: process.stdout_size,
         stderr_size: process.stderr_size,
     })

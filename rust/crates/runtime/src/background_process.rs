@@ -483,14 +483,6 @@ impl BackgroundProcessManager {
         inner.event_callbacks.push(callback);
     }
 
-    /// Emit a process event to all registered callbacks.
-    fn emit_event(&self, event: ProcessEvent) {
-        let inner = self.inner.lock().expect("manager lock poisoned");
-        for callback in &inner.event_callbacks {
-            callback(event.clone());
-        }
-    }
-
     /// Create a process group for managing related processes together.
     pub fn create_process_group(&self, group_name: &str) -> Result<(), String> {
         let mut inner = self.inner.lock().expect("manager lock poisoned");
@@ -605,77 +597,6 @@ impl BackgroundProcessManager {
             let guard = inner.lock().expect("manager lock poisoned");
             let _ = condvar.wait_timeout(guard, Duration::from_millis(500)).expect("condvar wait");
         }
-    }
-
-    /// Check and handle automatic restart for a process.
-    fn handle_auto_restart(
-        inner: &Arc<Mutex<ProcessManagerInner>>,
-        process_id: &str,
-    ) -> Option<String> {
-        let (restart_policy, restart_count, max_attempts, command, working_dir, env) = {
-            let guard = inner.lock().expect("manager lock poisoned");
-            let process = guard.processes.get(process_id)?;
-
-            // Check if we should restart
-            let should_restart = match process.restart_policy {
-                RestartPolicy::Never => false,
-                RestartPolicy::OnFailure => {
-                    process.status == ProcessStatus::Failed && process.restart_count < process.max_restart_attempts
-                }
-                RestartPolicy::Always => process.restart_count < process.max_restart_attempts,
-                RestartPolicy::Unlimited => process.status == ProcessStatus::Failed,
-            };
-
-            if !should_restart {
-                return None;
-            }
-
-            let live = guard.live_processes.get(process_id)?;
-            (
-                process.restart_policy,
-                process.restart_count,
-                process.max_restart_attempts,
-                live.command.clone(),
-                live.working_dir.clone(),
-                live.env.clone(),
-            )
-        };
-
-        // Attempt to restart the process
-        let new_pid = Self::spawn_process(&command, &working_dir, &env).ok()?;
-
-        // Update the process record
-        {
-            let mut guard = inner.lock().expect("manager lock poisoned");
-            if let Some(process) = guard.processes.get_mut(process_id) {
-                process.pid = Some(new_pid);
-                process.status = ProcessStatus::Running;
-                process.restart_count += 1;
-                process.updated_at = now_secs();
-                process.started_at = Some(Instant::now());
-            }
-            if let Some(live) = guard.live_processes.get_mut(process_id) {
-                live.pid = new_pid;
-                live.started_at = Instant::now();
-            }
-        }
-
-        Some(format!("Process {} restarted (attempt {})", process_id, restart_count + 1))
-    }
-
-    /// Spawn a new process with the given command and environment.
-    fn spawn_process(
-        command: &str,
-        working_dir: &PathBuf,
-        env: &HashMap<String, String>,
-    ) -> std::io::Result<u32> {
-        let mut child = std::process::Command::new("sh")
-            .arg("-lc")
-            .arg(command)
-            .current_dir(working_dir)
-            .envs(env.clone())
-            .spawn()?;
-        Ok(child.id())
     }
 
     /// Terminate a process by ID with a reason.
@@ -1803,37 +1724,6 @@ impl BackgroundProcessManager {
         }
 
         Ok(children)
-    }
-}
-
-/// Writes output to a file, handling line buffering.
-pub struct OutputWriter {
-    writer: BufWriter<File>,
-}
-
-impl OutputWriter {
-    /// Creates a new output writer for the given path.
-    pub fn new(path: &PathBuf) -> std::io::Result<Self> {
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)?;
-        Ok(Self {
-            writer: BufWriter::new(file),
-        })
-    }
-
-    /// Writes a line of output.
-    pub fn write_line(&mut self, line: &str) -> std::io::Result<()> {
-        self.writer.write_all(line.as_bytes())?;
-        self.writer.write_all(b"\n")?;
-        self.writer.flush()
-    }
-
-    /// Writes raw bytes.
-    pub fn write_bytes(&mut self, data: &[u8]) -> std::io::Result<()> {
-        self.writer.write_all(data)?;
-        self.writer.flush()
     }
 }
 

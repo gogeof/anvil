@@ -496,17 +496,6 @@ fn extract_number_before(text: &str, keyword: &str) -> Option<usize> {
         .and_then(|s| s.parse::<usize>().ok())
 }
 
-/// Extract a number that appears after a keyword.
-fn extract_number_after(text: &str, keyword: &str) -> Option<usize> {
-    let pos = text.find(keyword)?;
-    let after = &text[pos + keyword.len()..];
-    after
-        .trim()
-        .split_whitespace()
-        .next()
-        .and_then(|s| s.trim_end_matches(|c: char| !c.is_ascii_digit()).parse::<usize>().ok())
-}
-
 /// Quick test detection and run.
 pub fn quick_test(dir: &Path, filter: Option<&str>) -> io::Result<TestRunResult> {
     let project_type = detect_project_type(dir);
@@ -616,6 +605,5 @@ test_module.py::test_three SKIPPED
     fn extracts_numbers() {
         assert_eq!(extract_number_before("5 passed", "passed"), Some(5));
         assert_eq!(extract_number_before("10 failed", "failed"), Some(10));
-        assert_eq!(extract_number_after("passed 5;", "passed"), Some(5));
     }
 }
