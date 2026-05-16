@@ -31,8 +31,6 @@ pub struct SearchResult {
 struct FileIndex {
     /// Absolute path of the file.
     path: PathBuf,
-    /// Raw file content.
-    content: String,
     /// Lines extracted from the content (for fast line-relative search).
     lines: Vec<String>,
 }
@@ -302,7 +300,6 @@ impl IncrementalSearchEngine {
         let lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
         let file_index = FileIndex {
             path: path.clone(),
-            content,
             lines,
         };
         let mut files = self.files.write().expect("lock poisoned");

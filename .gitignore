@@ -10,3 +10,4 @@ __pycache__/
 .clawd-todos.json
 *.jsonl
 target/
+anvil-fresh

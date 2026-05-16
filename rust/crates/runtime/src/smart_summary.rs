@@ -75,7 +75,7 @@ impl SmartSummaryEngine {
     }
     
     /// 生成文件摘要
-    pub fn summarize_file(&self, path: &Path, max_lines: usize) -> Result<FileSummary, String> {
+    pub fn summarize_file(&self, path: &Path, _max_lines: usize) -> Result<FileSummary, String> {
         let content = std::fs::read_to_string(path)
             .map_err(|e| format!("Failed to read file: {}", e))?;
         

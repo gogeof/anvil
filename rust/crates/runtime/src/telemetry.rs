@@ -265,7 +265,7 @@ impl Default for Telemetry {
 fn chrono_lite_date(ts_ms: u64) -> String {
     // Simple conversion without chrono dependency
     let days_since_epoch = ts_ms / (24 * 60 * 60 * 1000);
-    let seconds = (ts_ms / 1000) % (24 * 60 * 60);
+    let _seconds = (ts_ms / 1000) % (24 * 60 * 60);
     
     // Unix epoch was 1970-01-01 (Thursday)
     // Days since epoch to year/month/day

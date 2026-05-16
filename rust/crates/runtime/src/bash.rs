@@ -77,6 +77,7 @@ impl From<ResourceLimitsInput> for ResourceLimits {
 /// Controls automatic restart behavior when a background process exits.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct RestartPolicyInput {
     /// Restart policy type.
     pub policy: RestartPolicy,
@@ -111,6 +112,7 @@ impl Default for RestartPolicyInput {
 /// (inverted: higher priority = lower nice value).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
+#[allow(dead_code)]
 pub struct ProcessPriority(pub i32);
 
 impl Default for ProcessPriority {

@@ -381,6 +381,7 @@ pub struct BackgroundProcess {
 
 /// Internal state for tracking a live process.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct LiveProcess {
     pid: u32,
     stdout_path: PathBuf,
@@ -405,6 +406,7 @@ struct LiveProcess {
 pub struct BackgroundProcessManager {
     inner: Arc<Mutex<ProcessManagerInner>>,
     /// Condition variable for wait operations.
+    #[allow(dead_code)]
     wait_condvar: Arc<Condvar>,
 }
 
@@ -564,7 +566,7 @@ impl BackgroundProcessManager {
     ) {
         loop {
             let process_ids_to_timeout: Vec<String> = {
-                let mut guard = inner.lock().expect("manager lock poisoned");
+                let guard = inner.lock().expect("manager lock poisoned");
 
                 // Check if we should stop
                 if !guard.timeout_monitor_running {

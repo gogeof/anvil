@@ -507,7 +507,7 @@ fn run_npm_lint(project_root: &Path) -> Vec<FileDiagnostic> {
         .ok();
     
     // Basic parsing - would need to be expanded for specific linters
-    let mut diagnostics = Vec::new();
+    let diagnostics = Vec::new();
     
     if let Some(output) = output {
         let stdout = String::from_utf8_lossy(&output.stdout);

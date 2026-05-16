@@ -334,7 +334,7 @@ pub fn find_fuzzy_matches(haystack: &str, needle: &str, options: &FuzzyMatchOpti
 
 /// Find the best fuzzy match of needle in haystack.
 pub fn find_best_fuzzy_match(haystack: &str, needle: &str, options: &FuzzyMatchOptions) -> Option<FuzzyMatchResult> {
-    let mut matches = find_fuzzy_matches(haystack, needle, options);
+    let matches = find_fuzzy_matches(haystack, needle, options);
     matches.into_iter().next()
 }
 
