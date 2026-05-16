@@ -171,7 +171,7 @@ impl RenderState {
     fn style_text(&self, text: &str, theme: &ColorTheme) -> String {
         let mut style = text.stylize();
 
-        if matches!(self.heading_level, Some(1 | 2)) || self.strong > 0 {
+        if self.heading_level.is_some() || self.strong > 0 {
             style = style.bold();
         }
         if self.emphasis > 0 {
@@ -180,9 +180,13 @@ impl RenderState {
 
         if let Some(level) = self.heading_level {
             style = match level {
-                1 => style.with(theme.heading),
-                2 => style.white(),
-                3 => style.with(Color::Blue),
+                1 => style
+                    .underlined()
+                    .with(Color::White)
+                    .on(Color::Cyan),
+                2 => style.bold().underlined().with(theme.heading),
+                3 => style.bold().with(Color::Yellow),
+                4 => style.with(Color::Cyan),
                 _ => style.with(Color::Grey),
             };
         } else if self.strong > 0 {
@@ -516,24 +520,27 @@ impl TerminalRenderer {
             })
             .collect::<Vec<_>>();
 
-        let border = format!("{}", "│".with(self.color_theme.table_border));
-        let separator = widths
-            .iter()
-            .map(|width| "─".repeat(*width + 2))
-            .collect::<Vec<_>>()
-            .join(&format!("{}", "┼".with(self.color_theme.table_border)));
-        let separator = format!("{border}{separator}{border}");
+        let has_headers = !table.headers.is_empty();
+        let tb = self.color_theme.table_border;
 
         let mut output = String::new();
-        if !table.headers.is_empty() {
+
+        // Top border: ┌───┬───┐
+        output.push_str(&self.render_table_border(&widths, "┌", "┬", "┐", tb));
+        output.push('\n');
+
+        // Header row
+        if has_headers {
             output.push_str(&self.render_table_row(&table.headers, &widths, true));
-            output.push('\n');
-            output.push_str(&separator);
+            // Header/data separator: ├───┼───┤
             if !table.rows.is_empty() {
+                output.push('\n');
+                output.push_str(&self.render_table_border(&widths, "├", "┼", "┤", tb));
                 output.push('\n');
             }
         }
 
+        // Data rows
         for (index, row) in table.rows.iter().enumerate() {
             output.push_str(&self.render_table_row(row, &widths, false));
             if index + 1 < table.rows.len() {
@@ -541,7 +548,33 @@ impl TerminalRenderer {
             }
         }
 
+        // Bottom border: └───┴───┘
+        if !table.rows.is_empty() || !has_headers {
+            output.push('\n');
+        }
+        output.push_str(&self.render_table_border(&widths, "└", "┴", "┘", tb));
+
         output
+    }
+
+    fn render_table_border(
+        &self,
+        widths: &[usize],
+        left: &str,
+        join: &str,
+        right: &str,
+        color: Color,
+    ) -> String {
+        let mut line = String::new();
+        let _ = write!(line, "{}", left.with(color));
+        for (i, width) in widths.iter().enumerate() {
+            let _ = write!(line, "{}", "─".repeat(*width + 2).with(color));
+            if i + 1 < widths.len() {
+                let _ = write!(line, "{}", join.with(color));
+            }
+        }
+        let _ = write!(line, "{}", right.with(color));
+        line
     }
 
     fn render_table_row(&self, row: &[String], widths: &[usize], is_header: bool) -> String {
@@ -973,10 +1006,12 @@ mod tests {
         let plain_text = strip_ansi(&markdown_output);
         let lines = plain_text.lines().collect::<Vec<_>>();
 
-        assert_eq!(lines[0], "│ Name  │ Value │");
-        assert_eq!(lines[1], "│───────┼───────│");
-        assert_eq!(lines[2], "│ alpha │ 1     │");
-        assert_eq!(lines[3], "│ beta  │ 22    │");
+        assert_eq!(lines[0], "┌────────┬───────┐");
+        assert_eq!(lines[1], "│ Name  │ Value │");
+        assert_eq!(lines[2], "├────────┼───────┤");
+        assert_eq!(lines[3], "│ alpha │ 1     │");
+        assert_eq!(lines[4], "│ beta  │ 22    │");
+        assert_eq!(lines[5], "└────────┴───────┘");
         assert!(markdown_output.contains('\u{1b}'));
     }
 

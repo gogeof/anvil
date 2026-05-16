@@ -53,6 +53,7 @@ use runtime::{
 };
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
+use crossterm::style::{Color, Stylize};
 use tools::{
     execute_tool, mvp_tool_specs, GlobalToolRegistry, RuntimeToolDefinition, ToolSearchOutput,
 };
@@ -5317,11 +5318,13 @@ impl LiveCli {
                     }
                     println!();
                 }
-                // Show final assistant text (colorful, no special wrapper)
+                // Show final assistant text (rendered from markdown to ANSI)
                 let final_text = final_assistant_text(&summary);
                 if !final_text.is_empty() {
-                    println!("\x1b[2m{}\x1b[0m", "─".repeat(50));
-                    println!("\x1b[0m{final_text}\x1b[0m");
+                    let renderer = TerminalRenderer::new();
+                    let rendered = renderer.markdown_to_ansi(&final_text);
+                    println!("{}", format!("{}", "─".repeat(50)).with(Color::DarkGrey));
+                    print!("{rendered}");
                     println!();
                 }
                 if let Some(event) = summary.auto_compaction {
@@ -5430,7 +5433,12 @@ impl LiveCli {
             eprintln!();
         }
         let final_text = final_assistant_text(&summary);
-        println!("{final_text}");
+        let renderer = TerminalRenderer::new();
+        let rendered = renderer.markdown_to_ansi(&final_text);
+        print!("{rendered}");
+        if !rendered.ends_with('\n') {
+            println!();
+        }
         Ok(())
     }
 
@@ -10720,7 +10728,7 @@ mod tests {
         push_output_block, render_config_report, render_diff_report, render_diff_report_for,
         render_help_topic, render_help_topic_json, render_memory_report,
         render_prompt_history_report, render_repl_help, render_resume_usage, render_session_list,
-        render_session_markdown, resolve_model_alias, resolve_model_alias_with_config,
+        render_session_markdown, resolve_model_alias_with_config,
         resolve_repl_model, resolve_session_reference, response_to_events,
         resume_supported_slash_commands, run_resume_command, short_tool_id,
         slash_command_completion_candidates_with_sessions, split_error_hint, status_context,
