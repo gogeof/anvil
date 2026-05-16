@@ -5362,12 +5362,7 @@ impl LiveCli {
             return String::new();
         }
 
-        let names: Vec<String> = tool_uses
-            .iter()
-            .filter_map(|t| t.get("name").and_then(|v| v.as_str()).map(str::to_string))
-            .collect();
-
-        format!("⚙ {}", names.join(", "))
+        format!("⚙ {} tools called", tool_uses.len())
     }
 
     fn run_turn_with_output(
@@ -9336,10 +9331,6 @@ impl APIRuntimeClient {
                         if let Some(progress_reporter) = &self.progress_reporter {
                             progress_reporter.mark_tool_phase(&name, &input);
                         }
-                        // Display tool call now that input is fully accumulated
-                        writeln!(out, "\n{}", format_tool_call_start(&name, &input))
-                            .and_then(|()| out.flush())
-                            .map_err(|error| RuntimeError::new(error.to_string()))?;
                         events.push(AssistantEvent::ToolUse { id, name, input });
                     }
                 }
