@@ -66,6 +66,8 @@ impl ModelFamilyIdentity {
 pub struct ContextFile {
     pub path: PathBuf,
     pub content: String,
+    /// YAML front matter parsed from AGENTS.md (if present and valid)
+    pub front_matter: Option<crate::agents_md::AgentsMdFrontMatter>,
 }
 
 /// Project-local context injected into the rendered system prompt.
@@ -251,7 +253,17 @@ fn discover_instruction_files(cwd: &Path) -> std::io::Result<Vec<ContextFile>> {
 fn push_context_file(files: &mut Vec<ContextFile>, path: PathBuf) -> std::io::Result<()> {
     match fs::read_to_string(&path) {
         Ok(content) if !content.trim().is_empty() => {
-            files.push(ContextFile { path, content });
+            // Parse YAML front matter for AGENTS.md files
+            let front_matter = if path.file_name().map_or(false, |n| n == "AGENTS.md") {
+                crate::agents_md::parse_agents_md(&content).front_matter
+            } else {
+                None
+            };
+            files.push(ContextFile {
+                path,
+                content,
+                front_matter,
+            });
             Ok(())
         }
         Ok(_) => Ok(()),
@@ -978,6 +990,7 @@ mod tests {
         let rendered = render_instruction_files(&[ContextFile {
             path: PathBuf::from("/tmp/project/AGENTS.md"),
             content: "Project rules".to_string(),
+            front_matter: None,
         }]);
         assert!(rendered.contains("# Instruction files"));
         assert!(rendered.contains("scope: /tmp/project"));

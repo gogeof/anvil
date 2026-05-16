@@ -5,6 +5,11 @@
 //! that drives interactive and one-shot turns.
 
 mod bash;
+pub mod agents_md;
+pub use agents_md::{
+    parse_agents_md, render_template, load_and_parse_agents_md, AgentsHooksConfig,
+    AgentsMdFrontMatter, ParsedAgentsMd, TemplateContext,
+};
 pub mod bash_validation;
 mod background_process;
 mod bootstrap;
