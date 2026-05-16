@@ -28,29 +28,24 @@ pub struct ColorTheme {
 
 impl Default for ColorTheme {
     fn default() -> Self {
+        // Nord 配色方案
+        let ice_blue = Color::Rgb { r: 136, g: 192, b: 208 };    // #88C0D0
+        let golden = Color::Rgb { r: 235, g: 203, b: 139 };      // #EBCB8B
+        let moss_green = Color::Rgb { r: 163, g: 190, b: 140 };  // #A3BE8C
+        let light_blue_gray = Color::Rgb { r: 216, g: 222, b: 233 }; // #D8DEE9
+
         Self {
-            // 爱马仕橙 (Hermès Orange)
-            heading: Color::Rgb { r: 242, g: 132, b: 45 },
-            // 金色 (Gold)
-            emphasis: Color::Rgb { r: 212, g: 175, b: 55 },
-            // 爱马仕橙
-            strong: Color::Rgb { r: 242, g: 132, b: 45 },
-            // 金色
-            inline_code: Color::Rgb { r: 212, g: 175, b: 55 },
-            // 爱马仕橙
-            link: Color::Rgb { r: 242, g: 132, b: 45 },
-            // 米色/奶油色 (Cream)
-            quote: Color::Rgb { r: 245, g: 235, b: 220 },
-            // 深棕色 (Dark Brown)
-            table_border: Color::Rgb { r: 101, g: 67, b: 33 },
-            // 深棕色
-            code_block_border: Color::Rgb { r: 101, g: 67, b: 33 },
-            // 爱马仕橙
-            spinner_active: Color::Rgb { r: 242, g: 132, b: 45 },
-            // 金色
-            spinner_done: Color::Rgb { r: 212, g: 175, b: 55 },
-            // 深红色 (保留警示感，Hermès 风格)
-            spinner_failed: Color::Rgb { r: 180, g: 50, b: 30 },
+            heading: ice_blue,
+            emphasis: golden,
+            strong: ice_blue,
+            inline_code: moss_green,
+            link: ice_blue,
+            quote: light_blue_gray,
+            table_border: ice_blue,
+            code_block_border: ice_blue,
+            spinner_active: ice_blue,
+            spinner_done: moss_green,
+            spinner_failed: Color::Rgb { r: 191, g: 97, b: 106 }, // #BF616A (Nord red)
         }
     }
 }
@@ -191,19 +186,19 @@ impl RenderState {
 
         if let Some(level) = self.heading_level {
             style = match level {
-                // H1: 白色文字 + 爱马仕橙背景 + 下划线
+                // H1: 白字 + 冰蓝背景 (Nord)
                 1 => style
                     .underlined()
                     .with(Color::White)
-                    .on(Color::Rgb { r: 242, g: 132, b: 45 }),
-                // H2: 爱马仕橙粗体 + 下划线
-                2 => style.bold().underlined().with(Color::Rgb { r: 242, g: 132, b: 45 }),
-                // H3: 金色粗体
-                3 => style.bold().with(Color::Rgb { r: 212, g: 175, b: 55 }),
-                // H4: 爱马仕橙
-                4 => style.with(Color::Rgb { r: 242, g: 132, b: 45 }),
-                // H5+: 奶油色
-                _ => style.with(Color::Rgb { r: 245, g: 235, b: 220 }),
+                    .on(Color::Rgb { r: 136, g: 192, b: 208 }),
+                // H2: 冰蓝粗体 + 下划线 (Nord)
+                2 => style.bold().underlined().with(Color::Rgb { r: 136, g: 192, b: 208 }),
+                // H3: 金黄粗体 (Nord)
+                3 => style.bold().with(Color::Rgb { r: 235, g: 203, b: 139 }),
+                // H4: 苔绿 (Nord)
+                4 => style.with(Color::Rgb { r: 163, g: 190, b: 140 }),
+                // H5+: 雪白 (Nord)
+                _ => style.with(Color::Rgb { r: 236, g: 239, b: 244 }),
             };
         } else if self.strong > 0 {
             style = style.with(theme.strong);
@@ -682,8 +677,8 @@ fn apply_code_block_background(line: &str) -> String {
     };
     // Replace any mid-line ANSI resets with reset+re-bg, but do NOT reset at
     // end-of-line so the background spans continuously across lines.
-    let with_background = trimmed.replace("\u{1b}[0m", "\u{1b}[0;48;2;60;40;20m");
-    format!("\u{1b}[48;2;60;40;20m{with_background}{trailing_newline}")
+    let with_background = trimmed.replace("\u{1b}[0m", "\u{1b}[0;48;2;46;52;64m");
+    format!("\u{1b}[48;2;46;52;64m{with_background}{trailing_newline}")
 }
 
 /// Pre-process raw markdown so that fenced code blocks whose body contains
@@ -998,7 +993,7 @@ mod tests {
         assert!(plain_text.contains("╭─ rust"));
         assert!(plain_text.contains("fn hi"));
         assert!(markdown_output.contains('\u{1b}'));
-        assert!(markdown_output.contains("[48;2;60;40;20m"));
+        assert!(markdown_output.contains("[48;2;46;52;64m"));
     }
 
     #[test]
