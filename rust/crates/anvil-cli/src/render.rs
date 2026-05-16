@@ -29,17 +29,28 @@ pub struct ColorTheme {
 impl Default for ColorTheme {
     fn default() -> Self {
         Self {
-            heading: Color::Cyan,
-            emphasis: Color::Magenta,
-            strong: Color::Yellow,
-            inline_code: Color::Green,
-            link: Color::Blue,
-            quote: Color::DarkGrey,
-            table_border: Color::DarkCyan,
-            code_block_border: Color::DarkGrey,
-            spinner_active: Color::DarkGrey,
-            spinner_done: Color::Green,
-            spinner_failed: Color::Red,
+            // 爱马仕橙 (Hermès Orange)
+            heading: Color::Rgb { r: 242, g: 132, b: 45 },
+            // 金色 (Gold)
+            emphasis: Color::Rgb { r: 212, g: 175, b: 55 },
+            // 爱马仕橙
+            strong: Color::Rgb { r: 242, g: 132, b: 45 },
+            // 金色
+            inline_code: Color::Rgb { r: 212, g: 175, b: 55 },
+            // 爱马仕橙
+            link: Color::Rgb { r: 242, g: 132, b: 45 },
+            // 米色/奶油色 (Cream)
+            quote: Color::Rgb { r: 245, g: 235, b: 220 },
+            // 深棕色 (Dark Brown)
+            table_border: Color::Rgb { r: 101, g: 67, b: 33 },
+            // 深棕色
+            code_block_border: Color::Rgb { r: 101, g: 67, b: 33 },
+            // 爱马仕橙
+            spinner_active: Color::Rgb { r: 242, g: 132, b: 45 },
+            // 金色
+            spinner_done: Color::Rgb { r: 212, g: 175, b: 55 },
+            // 深红色 (保留警示感，Hermès 风格)
+            spinner_failed: Color::Rgb { r: 180, g: 50, b: 30 },
         }
     }
 }
@@ -180,14 +191,19 @@ impl RenderState {
 
         if let Some(level) = self.heading_level {
             style = match level {
+                // H1: 白色文字 + 爱马仕橙背景 + 下划线
                 1 => style
                     .underlined()
                     .with(Color::White)
-                    .on(Color::Cyan),
-                2 => style.bold().underlined().with(theme.heading),
-                3 => style.bold().with(Color::Yellow),
-                4 => style.with(Color::Cyan),
-                _ => style.with(Color::Grey),
+                    .on(Color::Rgb { r: 242, g: 132, b: 45 }),
+                // H2: 爱马仕橙粗体 + 下划线
+                2 => style.bold().underlined().with(Color::Rgb { r: 242, g: 132, b: 45 }),
+                // H3: 金色粗体
+                3 => style.bold().with(Color::Rgb { r: 212, g: 175, b: 55 }),
+                // H4: 爱马仕橙
+                4 => style.with(Color::Rgb { r: 242, g: 132, b: 45 }),
+                // H5+: 奶油色
+                _ => style.with(Color::Rgb { r: 245, g: 235, b: 220 }),
             };
         } else if self.strong > 0 {
             style = style.with(theme.strong);
@@ -666,8 +682,8 @@ fn apply_code_block_background(line: &str) -> String {
     };
     // Replace any mid-line ANSI resets with reset+re-bg, but do NOT reset at
     // end-of-line so the background spans continuously across lines.
-    let with_background = trimmed.replace("\u{1b}[0m", "\u{1b}[0;48;5;236m");
-    format!("\u{1b}[48;5;236m{with_background}{trailing_newline}")
+    let with_background = trimmed.replace("\u{1b}[0m", "\u{1b}[0;48;2;60;40;20m");
+    format!("\u{1b}[48;2;60;40;20m{with_background}{trailing_newline}")
 }
 
 /// Pre-process raw markdown so that fenced code blocks whose body contains
@@ -982,7 +998,7 @@ mod tests {
         assert!(plain_text.contains("╭─ rust"));
         assert!(plain_text.contains("fn hi"));
         assert!(markdown_output.contains('\u{1b}'));
-        assert!(markdown_output.contains("[48;5;236m"));
+        assert!(markdown_output.contains("[48;2;60;40;20m"));
     }
 
     #[test]
