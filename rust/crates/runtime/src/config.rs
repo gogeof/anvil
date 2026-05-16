@@ -65,6 +65,12 @@ pub struct RuntimeFeatureConfig {
     sandbox: SandboxConfig,
     provider_fallbacks: ProviderFallbackConfig,
     trusted_roots: Vec<String>,
+    /// Whether to enable thinking/reasoning mode. Maps to `thinking: { "type": "enabled"|"disabled" }`.
+    thinking: Option<bool>,
+    /// Reasoning effort level: "low", "medium", or "high".
+    reasoning_effort: Option<String>,
+    /// Response format: "text" or "json".
+    response_format: Option<String>,
 }
 
 /// Ordered chain of fallback model identifiers used when the primary
@@ -326,6 +332,9 @@ impl ConfigLoader {
             sandbox: parse_optional_sandbox_config(&merged_value)?,
             provider_fallbacks: parse_optional_provider_fallbacks(&merged_value)?,
             trusted_roots: parse_optional_trusted_roots(&merged_value)?,
+            thinking: parse_optional_thinking(&merged_value)?,
+            reasoning_effort: parse_optional_reasoning_effort(&merged_value)?,
+            response_format: parse_optional_response_format(&merged_value)?,
         };
 
         Ok(RuntimeConfig {
@@ -493,6 +502,21 @@ impl RuntimeFeatureConfig {
     #[must_use]
     pub fn trusted_roots(&self) -> &[String] {
         &self.trusted_roots
+    }
+
+    #[must_use]
+    pub fn thinking(&self) -> Option<bool> {
+        self.thinking
+    }
+
+    #[must_use]
+    pub fn reasoning_effort(&self) -> Option<&str> {
+        self.reasoning_effort.as_deref()
+    }
+
+    #[must_use]
+    pub fn response_format(&self) -> Option<&str> {
+        self.response_format.as_deref()
     }
 }
 
@@ -924,6 +948,29 @@ fn parse_optional_trusted_roots(root: &JsonValue) -> Result<Vec<String>, ConfigE
         optional_string_array(object, "trustedRoots", "merged settings.trustedRoots")?
             .unwrap_or_default(),
     )
+}
+
+fn parse_optional_thinking(root: &JsonValue) -> Result<Option<bool>, ConfigError> {
+    let Some(object) = root.as_object() else {
+        return Ok(None);
+    };
+    optional_bool(object, "thinking", "merged settings.thinking")
+}
+
+fn parse_optional_reasoning_effort(root: &JsonValue) -> Result<Option<String>, ConfigError> {
+    let Some(object) = root.as_object() else {
+        return Ok(None);
+    };
+    optional_string(object, "reasoningEffort", "merged settings.reasoningEffort")
+        .map(|opt| opt.map(str::to_string))
+}
+
+fn parse_optional_response_format(root: &JsonValue) -> Result<Option<String>, ConfigError> {
+    let Some(object) = root.as_object() else {
+        return Ok(None);
+    };
+    optional_string(object, "responseFormat", "merged settings.responseFormat")
+        .map(|opt| opt.map(str::to_string))
 }
 
 fn parse_filesystem_mode_label(value: &str) -> Result<FilesystemIsolationMode, ConfigError> {

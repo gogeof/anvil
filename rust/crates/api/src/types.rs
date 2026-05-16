@@ -37,6 +37,11 @@ pub struct MessageRequest {
     /// When `None`, the field is omitted entirely (backend default behaviour).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thinking: Option<ThinkingConfig>,
+    /// Response format control for structured output.
+    /// When `Some(ResponseFormat::JsonObject)`, sends `response_format: { "type": "json_object" }`.
+    /// When `None`, the field is omitted (plain text output).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ResponseFormat>,
 }
 
 impl MessageRequest {
@@ -141,6 +146,15 @@ pub struct ThinkingConfig {
 pub enum ThinkingMode {
     Enabled,
     Disabled,
+}
+
+/// Response format control for structured output.
+/// Serializes as `{ "type": "text" }` or `{ "type": "json_object" }`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResponseFormat {
+    Text,
+    JsonObject,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

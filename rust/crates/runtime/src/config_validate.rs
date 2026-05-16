@@ -201,6 +201,18 @@ const TOP_LEVEL_FIELDS: &[FieldSpec] = &[
         name: "toolModel",
         expected: FieldType::String,
     },
+    FieldSpec {
+        name: "thinking",
+        expected: FieldType::Bool,
+    },
+    FieldSpec {
+        name: "reasoningEffort",
+        expected: FieldType::String,
+    },
+    FieldSpec {
+        name: "responseFormat",
+        expected: FieldType::String,
+    },
 ];
 
 const HOOKS_FIELDS: &[FieldSpec] = &[

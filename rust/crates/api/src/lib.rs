@@ -33,8 +33,9 @@ pub use sse::{parse_frame, SseParser};
 pub use types::{
     ContentBlockDelta, ContentBlockDeltaEvent, ContentBlockStartEvent, ContentBlockStopEvent,
     InputContentBlock, InputMessage, MessageDelta, MessageDeltaEvent, MessageRequest,
-    MessageResponse, MessageStartEvent, MessageStopEvent, OutputContentBlock, StreamEvent,
-    ThinkingConfig, ThinkingMode, ToolChoice, ToolDefinition, ToolResultContentBlock, Usage,
+    MessageResponse, MessageStartEvent, MessageStopEvent, OutputContentBlock, ResponseFormat,
+    StreamEvent, ThinkingConfig, ThinkingMode, ToolChoice, ToolDefinition, ToolResultContentBlock,
+    Usage,
 };
 
 pub use telemetry::{

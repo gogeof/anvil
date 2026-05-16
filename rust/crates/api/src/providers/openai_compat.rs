@@ -1057,6 +1057,13 @@ pub fn build_chat_completion_request(
     // When thinking is enabled, this controls how much reasoning is done.
     // When thinking is disabled, reasoning_effort is ignored by DeepSeek.
 
+    // response_format for structured output (e.g. json_object).
+    // When `json_object`, sends `response_format: { "type": "json_object" }`.
+    // Omitted when None so the backend uses its default (plain text).
+    if let Some(response_format) = &request.response_format {
+        payload["response_format"] = json!({ "type": response_format });
+    }
+
     payload
 }
 
