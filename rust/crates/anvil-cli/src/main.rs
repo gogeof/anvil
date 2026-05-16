@@ -10381,12 +10381,6 @@ impl ToolExecutor for CliToolExecutor {
         };
         match result {
             Ok(output) => {
-                if self.emit_output {
-                    let markdown = format_tool_result(tool_name, &output, false);
-                    self.renderer
-                        .stream_markdown(&markdown, &mut io::stdout())
-                        .map_err(|error| ToolError::new(error.to_string()))?;
-                }
                 Ok(output)
             }
             Err(error) => {
