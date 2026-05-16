@@ -42,6 +42,8 @@ mod prompt;
 pub mod recovery_recipes;
 mod remote;
 pub mod sandbox;
+pub mod sandbox_layers;
+pub mod ssh;
 mod session;
 pub mod session_control;
 pub use session_control::SessionStore;
