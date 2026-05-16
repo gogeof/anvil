@@ -669,16 +669,9 @@ impl MarkdownStreamState {
 }
 
 fn apply_code_block_background(line: &str) -> String {
-    let trimmed = line.trim_end_matches('\n');
-    let trailing_newline = if trimmed.len() == line.len() {
-        ""
-    } else {
-        "\n"
-    };
-    // Replace any mid-line ANSI resets with reset+re-bg, but do NOT reset at
-    // end-of-line so the background spans continuously across lines.
-    let with_background = trimmed.replace("\u{1b}[0m", "\u{1b}[0;48;2;46;52;64m");
-    format!("\u{1b}[48;2;46;52;64m{with_background}{trailing_newline}")
+    // No background color — return the highlighted line as-is.
+    // The code block is visually distinguished by its border (╭─ / ╰─) only.
+    line.to_string()
 }
 
 /// Pre-process raw markdown so that fenced code blocks whose body contains
@@ -993,7 +986,8 @@ mod tests {
         assert!(plain_text.contains("╭─ rust"));
         assert!(plain_text.contains("fn hi"));
         assert!(markdown_output.contains('\u{1b}'));
-        assert!(markdown_output.contains("[48;2;46;52;64m"));
+        // Background color removed — code block differentiated by borders only
+        assert!(!markdown_output.contains("[48;2;46;52;64m"));
     }
 
     #[test]
