@@ -5310,7 +5310,7 @@ impl LiveCli {
         let renderer = TerminalRenderer::new();
         let theme = renderer.color_theme();
         let mut spinner = Spinner::new();
-        spinner.tick("Thinking", theme, &mut stdout)?;
+        spinner.tick("", theme, &mut stdout)?;
         let mut permission_prompter = CliPermissionPrompter::new(self.permission_mode);
         let result = runtime.run_turn(input, Some(&mut permission_prompter));
         hook_abort_monitor.stop();
@@ -5358,58 +5358,16 @@ impl LiveCli {
     /// Extracts a human-readable summary of tool calls from a TurnSummary.
     fn tool_call_summary(&self, summary: &runtime::TurnSummary) -> String {
         let tool_uses = collect_tool_uses(summary);
-        let tool_results = collect_tool_results(summary);
         if tool_uses.is_empty() {
             return String::new();
         }
 
-        let mut lines: Vec<String> = Vec::new();
-        lines.push("── Tools called ──".to_string());
+        let names: Vec<String> = tool_uses
+            .iter()
+            .filter_map(|t| t.get("name").and_then(|v| v.as_str()).map(str::to_string))
+            .collect();
 
-        // Build a map from tool_use_id to result
-        let mut result_map: std::collections::HashMap<String, &serde_json::Value> =
-            std::collections::HashMap::new();
-        for result in &tool_results {
-            if let Some(id) = result.get("tool_use_id").and_then(|v| v.as_str()) {
-                result_map.insert(id.to_string(), result);
-            }
-        }
-
-        for tool_use in &tool_uses {
-            let name = tool_use
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let id = tool_use
-                .get("id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-
-            let result_summary = result_map.get(id).map_or_else(
-                || "no result".to_string(),
-                |r| {
-                    let is_error = r.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false);
-                    let output = r
-                        .get("output")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
-                    // Truncate long output for summary display (UTF-8 safe)
-                    let trimmed = if output.chars().count() > 120 {
-                        format!("{}…", output.chars().take(120).collect::<String>())
-                    } else {
-                        output.to_string()
-                    };
-                    if is_error {
-                        format!("⚠️ ERROR: {trimmed}")
-                    } else {
-                        trimmed
-                    }
-                },
-            );
-            lines.push(format!("  · {name}: {result_summary}"));
-        }
-
-        lines.join("\n")
+        format!("⚙ {}", names.join(", "))
     }
 
     fn run_turn_with_output(
@@ -10218,20 +10176,12 @@ fn truncate_output_for_display(content: &str, max_lines: usize, max_chars: usize
 }
 
 fn render_thinking_block_summary(
-    out: &mut (impl Write + ?Sized),
-    char_count: Option<usize>,
-    redacted: bool,
+    _out: &mut (impl Write + ?Sized),
+    _char_count: Option<usize>,
+    _redacted: bool,
 ) -> Result<(), RuntimeError> {
-    let summary = if redacted {
-        "\n\x1b[90m▶ Thinking block hidden by provider\x1b[0m\n".to_string()
-    } else if let Some(char_count) = char_count {
-        format!("\n\x1b[90m▶ Thinking ({char_count} chars hidden)\x1b[0m\n")
-    } else {
-        "\n\x1b[90m▶ Thinking hidden\x1b[0m\n".to_string()
-    };
-    write!(out, "{summary}")
-        .and_then(|()| out.flush())
-        .map_err(|error| RuntimeError::new(error.to_string()))
+    // Thinking summaries are suppressed to reduce visual noise
+    Ok(())
 }
 
 fn push_output_block(
