@@ -22,15 +22,18 @@ impl Default for CompactionConfig {
 }
 
 impl CompactionConfig {
-    /// 根据模型动态调整上下文限制
+    /// Returns a model-appropriate compaction config based on context window.
+    ///
+    /// DeepSeek V4 models support 1M context windows, so we use a larger
+    /// threshold (500K estimated tokens) to delay compaction and make full
+    /// use of the available capacity. Other models default to 10K.
     pub fn for_model(model: &str) -> Self {
-        // DeepSeek 支持 1M context，使用更大的限制
         let max_tokens = if model.to_lowercase().contains("deepseek") {
-            100_000 // DeepSeek: 100K tokens
+            500_000 // DeepSeek: 500K tokens — utilises 1M context window
         } else {
-            10_000 // 其他模型: 10K tokens
+            10_000 // Other models: 10K tokens
         };
-        
+
         Self {
             preserve_recent_messages: 4,
             max_estimated_tokens: max_tokens,

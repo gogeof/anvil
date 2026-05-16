@@ -1591,7 +1591,7 @@ mod tests {
     use crate::types::{
         ContentBlockDelta, ContentBlockDeltaEvent, ContentBlockStartEvent, ContentBlockStopEvent,
         InputContentBlock, InputMessage, MessageRequest, OutputContentBlock, StreamEvent,
-        ToolChoice, ToolDefinition, ToolResultContentBlock,
+        ThinkingConfig, ThinkingMode, ToolChoice, ToolDefinition, ToolResultContentBlock,
     };
     use serde_json::json;
     use std::sync::{Mutex, OnceLock};
@@ -1861,7 +1861,7 @@ mod tests {
     }
 
     #[test]
-    fn reasoning_effort_is_included_when_set() {
+    fn reasoning_effort_included_when_set() {
         let payload = build_chat_completion_request(
             &MessageRequest {
                 model: "o4-mini".to_string(),
@@ -1873,6 +1873,27 @@ mod tests {
             OpenAiCompatConfig::openai(),
         );
         assert_eq!(payload["reasoning_effort"], json!("high"));
+    }
+
+    #[test]
+    fn deepseek_v4_pro_reasoning_effort_included_when_set() {
+        // DeepSeek V4 Pro also supports reasoning_effort, independent of
+        // the `is_reasoning_model` check (which only applies to tuning params).
+        let payload = build_chat_completion_request(
+            &MessageRequest {
+                model: "deepseek-v4-pro".to_string(),
+                max_tokens: 1024,
+                messages: vec![InputMessage::user_text("think hard")],
+                reasoning_effort: Some("high".to_string()),
+                thinking: Some(ThinkingConfig {
+                    mode: ThinkingMode::Enabled,
+                }),
+                ..Default::default()
+            },
+            OpenAiCompatConfig::deepseek(),
+        );
+        assert_eq!(payload["reasoning_effort"], json!("high"));
+        assert_eq!(payload["thinking"], json!({"type": "enabled"}));
     }
 
     #[test]
@@ -2027,8 +2048,8 @@ mod tests {
             frequency_penalty: Some(0.5),
             presence_penalty: Some(0.3),
             stop: Some(vec!["\n".to_string()]),
-            reasoning_effort: None,
-            thinking: None,
+            response_format: None,
+            ..Default::default()
         };
         let payload = build_chat_completion_request(&request, OpenAiCompatConfig::openai());
         assert_eq!(payload["temperature"], 0.7);
