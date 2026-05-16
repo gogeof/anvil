@@ -436,7 +436,7 @@ impl TerminalRenderer {
 
     fn start_quote(&self, state: &mut RenderState, output: &mut String) {
         state.quote += 1;
-        let _ = write!(output, "{}", "│ ".with(self.color_theme.quote));
+        let _ = write!(output, "{}", "║ ".with(self.color_theme.quote));
     }
 
     fn start_item(state: &mut RenderState, output: &mut String) {
@@ -631,8 +631,10 @@ fn apply_code_block_background(line: &str) -> String {
     } else {
         "\n"
     };
+    // Replace any mid-line ANSI resets with reset+re-bg, but do NOT reset at
+    // end-of-line so the background spans continuously across lines.
     let with_background = trimmed.replace("\u{1b}[0m", "\u{1b}[0;48;5;236m");
-    format!("\u{1b}[48;5;236m{with_background}\u{1b}[0m{trailing_newline}")
+    format!("\u{1b}[48;5;236m{with_background}{trailing_newline}")
 }
 
 /// Pre-process raw markdown so that fenced code blocks whose body contains
