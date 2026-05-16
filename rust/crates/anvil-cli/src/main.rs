@@ -8958,6 +8958,8 @@ fn build_runtime_with_plugin_state(
             tool_registry.clone(),
             progress_reporter,
             fallback_model,
+            feature_config.thinking(),
+            feature_config.response_format().map(String::from),
         )?,
         CliToolExecutor::new(
             allowed_tools.clone(),
@@ -9079,6 +9081,13 @@ struct APIRuntimeClient {
     progress_reporter: Option<InternalPromptProgressReporter>,
     reasoning_effort: Option<String>,
     fallback_model: Option<String>,
+    /// Whether to enable thinking/reasoning mode (from RuntimeFeatureConfig or --thinking).
+    /// Maps to `thinking: { "type": "enabled" | "disabled" }` in the API request.
+    thinking: Option<bool>,
+    /// Response format control (from RuntimeFeatureConfig).
+    /// When Some("json"), sends `response_format: { "type": "json_object" }`.
+    /// When Some("text") or None, the field is omitted (plain text output).
+    response_format: Option<String>,
 }
 
 impl APIRuntimeClient {
@@ -9091,6 +9100,8 @@ impl APIRuntimeClient {
         tool_registry: GlobalToolRegistry,
         progress_reporter: Option<InternalPromptProgressReporter>,
         fallback_model: Option<String>,
+        thinking: Option<bool>,
+        response_format: Option<String>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         // Dispatch to the correct provider at construction time.
         // `ApiProviderClient` (exposed by the api crate as
@@ -9146,6 +9157,8 @@ impl APIRuntimeClient {
             progress_reporter,
             reasoning_effort: None,
             fallback_model,
+            thinking,
+            response_format,
         })
     }
 
@@ -9180,6 +9193,16 @@ impl ApiClient for APIRuntimeClient {
             tool_choice: self.enable_tools.then_some(ToolChoice::Auto),
             stream: true,
             reasoning_effort: self.reasoning_effort.clone(),
+            thinking: self.thinking.map(|enabled| api::ThinkingConfig {
+                mode: if enabled { api::ThinkingMode::Enabled } else { api::ThinkingMode::Disabled },
+            }),
+            response_format: self.response_format.as_deref().and_then(|fmt| {
+                if fmt == "json" {
+                    Some(api::ResponseFormat::JsonObject)
+                } else {
+                    None
+                }
+            }),
             ..Default::default()
         };
 
