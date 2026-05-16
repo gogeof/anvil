@@ -28,24 +28,23 @@ pub struct ColorTheme {
 
 impl Default for ColorTheme {
     fn default() -> Self {
-        // Nord 配色方案
-        let ice_blue = Color::Rgb { r: 136, g: 192, b: 208 };    // #88C0D0
-        let golden = Color::Rgb { r: 235, g: 203, b: 139 };      // #EBCB8B
-        let moss_green = Color::Rgb { r: 163, g: 190, b: 140 };  // #A3BE8C
-        let light_blue_gray = Color::Rgb { r: 216, g: 222, b: 233 }; // #D8DEE9
+        // 3 种核心色
+        let accent = Color::Rgb { r: 255, g: 127, b: 50 };       // 爱马仕橙
+        let secondary = Color::Rgb { r: 136, g: 192, b: 208 };    // 冰蓝
+        let muted = Color::Rgb { r: 150, g: 155, b: 165 };        // 灰
 
         Self {
-            heading: ice_blue,
-            emphasis: golden,
-            strong: ice_blue,
-            inline_code: moss_green,
-            link: ice_blue,
-            quote: light_blue_gray,
-            table_border: ice_blue,
-            code_block_border: ice_blue,
-            spinner_active: ice_blue,
-            spinner_done: moss_green,
-            spinner_failed: Color::Rgb { r: 191, g: 97, b: 106 }, // #BF616A (Nord red)
+            heading: accent,
+            emphasis: accent,
+            strong: secondary,
+            inline_code: accent,
+            link: secondary,
+            quote: muted,
+            table_border: secondary,
+            code_block_border: secondary,
+            spinner_active: secondary,
+            spinner_done: secondary,
+            spinner_failed: accent,
         }
     }
 }
@@ -186,19 +185,19 @@ impl RenderState {
 
         if let Some(level) = self.heading_level {
             style = match level {
-                // H1: 白字 + 冰蓝背景 (Nord)
+                // H1: 白字 + accent 背景
                 1 => style
                     .underlined()
                     .with(Color::White)
-                    .on(Color::Rgb { r: 136, g: 192, b: 208 }),
-                // H2: 冰蓝粗体 + 下划线 (Nord)
-                2 => style.bold().underlined().with(Color::Rgb { r: 136, g: 192, b: 208 }),
-                // H3: 金黄粗体 (Nord)
-                3 => style.bold().with(Color::Rgb { r: 235, g: 203, b: 139 }),
-                // H4: 苔绿 (Nord)
-                4 => style.with(Color::Rgb { r: 163, g: 190, b: 140 }),
-                // H5+: 雪白 (Nord)
-                _ => style.with(Color::Rgb { r: 236, g: 239, b: 244 }),
+                    .on(Color::Rgb { r: 255, g: 127, b: 50 }),
+                // H2: accent 粗体 + 下划线
+                2 => style.bold().underlined().with(Color::Rgb { r: 255, g: 127, b: 50 }),
+                // H3: secondary 粗体
+                3 => style.bold().with(Color::Rgb { r: 136, g: 192, b: 208 }),
+                // H4: muted
+                4 => style.with(Color::Rgb { r: 150, g: 155, b: 165 }),
+                // H5+: 默认白
+                _ => style.with(Color::White),
             };
         } else if self.strong > 0 {
             style = style.with(theme.strong);

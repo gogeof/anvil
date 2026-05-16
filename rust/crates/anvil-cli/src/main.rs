@@ -9,6 +9,7 @@
 mod init;
 mod input;
 mod render;
+mod completion;
 
 use std::collections::BTreeSet;
 use std::env;
@@ -4560,12 +4561,22 @@ fn run_repl(
     cli.set_reasoning_effort(reasoning_effort);
     let mut editor =
         input::LineEditor::new("> ", cli.repl_completion_candidates().unwrap_or_default());
+    // Wire session IDs for /resume, /session switch, /session delete completion
+    if let Ok(sessions) = list_managed_sessions() {
+        let session_ids: Vec<String> = sessions.into_iter().map(|s| s.id).collect();
+        editor.set_session_ids(session_ids);
+    }
     println!("{}", cli.startup_banner());
     println!("{}", format_connected_line(&cli.model));
 
     loop {
         println!("{}", cli.format_status_header());
         editor.set_completions(cli.repl_completion_candidates().unwrap_or_default());
+        // Refresh session IDs each loop iteration
+        if let Ok(sessions) = list_managed_sessions() {
+            let session_ids: Vec<String> = sessions.into_iter().map(|s| s.id).collect();
+            editor.set_session_ids(session_ids);
+        }
         match editor.read_line()? {
             input::ReadOutcome::Submit(input) => {
                 let trimmed = input.trim().to_string();
@@ -5296,18 +5307,17 @@ impl LiveCli {
     fn run_turn(&mut self, input: &str) -> Result<(), Box<dyn std::error::Error>> {
         let (mut runtime, hook_abort_monitor) = self.prepare_turn_runtime(true)?;
         let mut stdout = io::stdout();
-        // Static thinking indicator (no spinner animation)
-        write!(stdout, "\x1b[2m\x1b[38;5;244m🔨 Thinking...\x1b[0m\n")?;
-        stdout.flush()?;
+        let renderer = TerminalRenderer::new();
+        let theme = renderer.color_theme();
+        let mut spinner = Spinner::new();
+        spinner.tick("Thinking", theme, &mut stdout)?;
         let mut permission_prompter = CliPermissionPrompter::new(self.permission_mode);
         let result = runtime.run_turn(input, Some(&mut permission_prompter));
         hook_abort_monitor.stop();
         match result {
             Ok(summary) => {
                 self.replace_runtime(runtime)?;
-                // Clear the thinking line and show done
-                write!(stdout, "\x1b[1A\x1b[2K\x1b[38;5;244m🔨 Done\x1b[0m\n")?;
-                stdout.flush()?;
+                spinner.finish("Done", theme, &mut stdout)?;
                 println!();
                 // Show tool call summary (gray)
                 let tool_summary = self.tool_call_summary(&summary);
