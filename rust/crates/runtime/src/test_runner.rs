@@ -122,11 +122,14 @@ pub enum TestStatus {
     Pending,
 }
 
-/// Detect project type from directory contents.
-pub fn detect_project_type(dir: &Path) -> ProjectType {
+/// Maximum number of parent directories to search when detecting project type.
+const DETECT_MAX_PARENT_DEPTH: u32 = 10;
+
+/// Check a single directory for project type indicators.
+fn check_project_type_in_dir(dir: &Path) -> Option<ProjectType> {
     // Check for Cargo.toml (Rust)
     if dir.join("Cargo.toml").exists() {
-        return ProjectType::Rust;
+        return Some(ProjectType::Rust);
     }
     
     // Check for pyproject.toml, setup.py, requirements.txt (Python)
@@ -135,22 +138,22 @@ pub fn detect_project_type(dir: &Path) -> ProjectType {
         || dir.join("requirements.txt").exists()
         || dir.join("Pipfile").exists()
     {
-        return ProjectType::Python;
+        return Some(ProjectType::Python);
     }
     
     // Check for package.json (Node.js)
     if dir.join("package.json").exists() {
-        return ProjectType::NodeJs;
+        return Some(ProjectType::NodeJs);
     }
     
     // Check for go.mod (Go)
     if dir.join("go.mod").exists() {
-        return ProjectType::Go;
+        return Some(ProjectType::Go);
     }
     
     // Check for pom.xml or build.gradle (Java)
     if dir.join("pom.xml").exists() || dir.join("build.gradle").exists() {
-        return ProjectType::Java;
+        return Some(ProjectType::Java);
     }
     
     // Check for .csproj or .sln (.NET)
@@ -163,9 +166,33 @@ pub fn detect_project_type(dir: &Path) -> ProjectType {
             })
             .unwrap_or(false)
     {
-        return ProjectType::DotNet;
+        return Some(ProjectType::DotNet);
     }
     
+    None
+}
+
+/// Detect project type from directory contents, searching parent directories
+/// if no project configuration is found in the given directory.
+///
+/// Walks up at most [`DETECT_MAX_PARENT_DEPTH`] levels to find a project root.
+pub fn detect_project_type(dir: &Path) -> ProjectType {
+    let mut current = Some(dir);
+    let mut depth = 0u32;
+
+    while let Some(d) = current {
+        if let Some(pt) = check_project_type_in_dir(d) {
+            return pt;
+        }
+
+        // Move to parent directory
+        if depth >= DETECT_MAX_PARENT_DEPTH {
+            break;
+        }
+        current = d.parent();
+        depth += 1;
+    }
+
     ProjectType::Unknown
 }
 
@@ -605,5 +632,94 @@ test_module.py::test_three SKIPPED
     fn extracts_numbers() {
         assert_eq!(extract_number_before("5 passed", "passed"), Some(5));
         assert_eq!(extract_number_before("10 failed", "failed"), Some(10));
+    }
+
+    #[test]
+    fn detects_project_from_subdir_walking_up() {
+        // Create: tmp/parent/Cargo.toml, then call detect from tmp/parent/subdir/deep
+        let tmp = temp_dir();
+        let parent = tmp.join("parent");
+        let subdir = parent.join("subdir");
+        let deep = subdir.join("deep");
+        fs::create_dir_all(&deep).ok();
+        fs::write(parent.join("Cargo.toml"), "[package]\nname = \"test\"").ok();
+
+        // Should find Cargo.toml by walking up from the deep subdir
+        assert_eq!(detect_project_type(&deep), ProjectType::Rust);
+        fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn detects_project_from_immediate_subdir() {
+        // Create: tmp/parent/go.mod, then call detect from tmp/parent/subdir
+        let tmp = temp_dir();
+        let parent = tmp.join("goparent");
+        let subdir = parent.join("subdir");
+        fs::create_dir_all(&subdir).ok();
+        fs::write(parent.join("go.mod"), "module test\ngo 1.21").ok();
+
+        assert_eq!(detect_project_type(&subdir), ProjectType::Go);
+        fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn returns_unknown_when_no_project_found() {
+        let tmp = temp_dir();
+        fs::create_dir_all(&tmp).ok();
+        // No project files at all
+        assert_eq!(detect_project_type(&tmp), ProjectType::Unknown);
+        fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn returns_unknown_when_no_project_in_parents() {
+        let tmp = temp_dir();
+        let deep = tmp.join("a").join("b").join("c");
+        fs::create_dir_all(&deep).ok();
+        // No project files anywhere
+        assert_eq!(detect_project_type(&deep), ProjectType::Unknown);
+        fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn stops_searching_at_filesystem_root() {
+        // Call detect_project_type on root - should return Unknown without panic
+        let result = detect_project_type(Path::new("/"));
+        // Just verify it doesn't panic and returns something
+        assert!(result == ProjectType::Unknown || result == ProjectType::Rust || result == ProjectType::Python);
+    }
+
+    #[test]
+    fn detects_python_project_from_nested_subdir() {
+        let tmp = temp_dir();
+        let parent = tmp.join("py-parent");
+        let nested = parent.join("src").join("tests");
+        fs::create_dir_all(&nested).ok();
+        fs::write(parent.join("pyproject.toml"), "[project]\nname = \"test\"").ok();
+
+        assert_eq!(detect_project_type(&nested), ProjectType::Python);
+        fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn detects_node_project_via_parent_walk() {
+        let tmp = temp_dir();
+        let parent = tmp.join("node-app");
+        let sub = parent.join("packages").join("my-pkg");
+        fs::create_dir_all(&sub).ok();
+        fs::write(parent.join("package.json"), "{\"name\": \"test\"}").ok();
+
+        assert_eq!(detect_project_type(&sub), ProjectType::NodeJs);
+        fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn direct_directory_check_still_works() {
+        // Existing behavior: detecting from the same dir as the config file
+        let tmp = temp_dir();
+        fs::create_dir_all(&tmp).ok();
+        fs::write(tmp.join("Cargo.toml"), "[package]\nname = \"test\"").ok();
+        assert_eq!(detect_project_type(&tmp), ProjectType::Rust);
+        fs::remove_dir_all(&tmp).ok();
     }
 }
