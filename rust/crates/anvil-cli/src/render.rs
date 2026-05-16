@@ -669,9 +669,41 @@ impl MarkdownStreamState {
 }
 
 fn apply_code_block_background(line: &str) -> String {
-    // No background color — return the highlighted line as-is.
-    // The code block is visually distinguished by its border (╭─ / ╰─) only.
-    line.to_string()
+    // Strip any background-color ANSI escape sequences that syntect may have
+    // embedded from its theme (e.g. 48;2;R;G;B or 48;5;N).
+    // Code blocks are visually distinguished by borders (╭─ / ╰─) only.
+    let mut output = String::with_capacity(line.len());
+    let mut chars = line.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\x1b' && chars.peek() == Some(&'[') {
+            chars.next(); // consume '['
+            let mut seq = String::from("\x1b[");
+            let mut is_background = false;
+
+            for next in chars.by_ref() {
+                if next == 'm' {
+                    seq.push('m');
+                    break;
+                }
+                seq.push(next);
+                // Detect background color sequences
+                //  48;2;R;G;B  (24-bit), 48;5;N  (256-color), or 48m (8-color)
+                if seq == "\x1b[48;2;" || seq == "\x1b[48;5;" || seq == "\x1b[48" {
+                    is_background = true;
+                }
+            }
+
+            if !is_background {
+                output.push_str(&seq);
+            }
+            // else: drop the entire background color sequence
+        } else {
+            output.push(ch);
+        }
+    }
+
+    output
 }
 
 /// Pre-process raw markdown so that fenced code blocks whose body contains
