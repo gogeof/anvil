@@ -9798,52 +9798,51 @@ fn format_tool_call_start(name: &str, input: &str) -> String {
         serde_json::from_str(input).unwrap_or(serde_json::Value::String(input.to_string()));
 
     let detail = match name {
-        "bash" | "Bash" => format_bash_call(&parsed),
-        "read_file" | "Read" => {
-            let path = extract_tool_path(&parsed);
-            format!("\x1b[38;5;245m📄 Reading {path}…\x1b[0m")
+        "bash" | "Bash" => {
+            let cmd = parsed
+                .get("command")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default();
+            if cmd.is_empty() {
+                String::new()
+            } else {
+                truncate_for_summary(cmd, 120)
+            }
         }
+        "read_file" | "Read" => extract_tool_path(&parsed),
         "write_file" | "Write" => {
             let path = extract_tool_path(&parsed);
             let lines = parsed
                 .get("content")
-                .and_then(|value| value.as_str())
-                .map_or(0, |content| content.lines().count());
-            format!("\x1b[38;5;245m✏️ Writing {path} ({lines} lines)\x1b[0m")
+                .and_then(|v| v.as_str())
+                .map_or(0, |c| c.lines().count());
+            format!("{path} ({lines} lines)")
         }
-        "edit_file" | "Edit" => {
-            let path = extract_tool_path(&parsed);
-            let old_value = parsed
-                .get("old_string")
-                .or_else(|| parsed.get("oldString"))
-                .and_then(|value| value.as_str())
-                .unwrap_or_default();
-            let new_value = parsed
-                .get("new_string")
-                .or_else(|| parsed.get("newString"))
-                .and_then(|value| value.as_str())
-                .unwrap_or_default();
-            format!(
-                "\x1b[1;33m📝 Editing {path}\x1b[0m{}",
-                format_patch_preview(old_value, new_value)
-                    .map(|preview| format!("\n{preview}"))
-                    .unwrap_or_default()
-            )
-        }
-        "glob_search" | "Glob" => format_search_start("🔎 Glob", &parsed),
-        "grep_search" | "Grep" => format_search_start("🔎 Grep", &parsed),
-        "web_search" | "WebSearch" => parsed
-            .get("query")
-            .and_then(|value| value.as_str())
+        "edit_file" | "Edit" => extract_tool_path(&parsed),
+        "glob_search" | "Glob" => parsed
+            .get("pattern")
+            .and_then(|v| v.as_str())
             .unwrap_or("?")
             .to_string(),
-        _ => summarize_tool_payload(input),
+        "grep_search" | "Grep" => parsed
+            .get("pattern")
+            .and_then(|v| v.as_str())
+            .unwrap_or("?")
+            .to_string(),
+        "web_search" | "WebSearch" => parsed
+            .get("query")
+            .and_then(|v| v.as_str())
+            .unwrap_or("?")
+            .to_string(),
+        _ => String::new(),
     };
 
-    let border = "─".repeat(name.len() + 8);
-    format!(
-        "\x1b[2m\x1b[38;5;244m╭─ \x1b[38;5;244m{name}\x1b[0m\x1b[2m \x1b[38;5;244m─╮\x1b[0m\n\x1b[2m\x1b[38;5;244m│\x1b[0m\x1b[2m {detail}\x1b[0m\n\x1b[2m\x1b[38;5;244m╰{border}╯\x1b[0m"
-    )
+    let detail_str = if detail.is_empty() {
+        String::new()
+    } else {
+        format!(" {}", detail)
+    };
+    format!("\x1b[2m· {name}{detail_str}\x1b[0m")
 }
 
 fn format_tool_result(name: &str, output: &str, is_error: bool) -> String {
@@ -9852,26 +9851,18 @@ fn format_tool_result(name: &str, output: &str, is_error: bool) -> String {
     } else {
         "\x1b[1;32m✓\x1b[0m"
     };
-    if is_error {
-        let summary = truncate_for_summary(output.trim(), 160);
-        return if summary.is_empty() {
-            format!("{icon} \x1b[38;5;245m{name}\x1b[0m")
+    // Collapse to a one-line summary: ✓ bash, ✗ read_file, etc.
+    let status = if is_error {
+        let summary = truncate_for_summary(output.trim(), 80);
+        if summary.is_empty() {
+            String::new()
         } else {
-            format!("{icon} \x1b[38;5;245m{name}\x1b[0m\n\x1b[38;5;203m{summary}\x1b[0m")
-        };
-    }
-
-    let parsed: serde_json::Value =
-        serde_json::from_str(output).unwrap_or(serde_json::Value::String(output.to_string()));
-    match name {
-        "bash" | "Bash" => format_bash_result(icon, &parsed),
-        "read_file" | "Read" => format_read_result(icon, &parsed),
-        "write_file" | "Write" => format_write_result(icon, &parsed),
-        "edit_file" | "Edit" => format_edit_result(icon, &parsed),
-        "glob_search" | "Glob" => format_glob_result(icon, &parsed),
-        "grep_search" | "Grep" => format_grep_result(icon, &parsed),
-        _ => format_generic_tool_result(icon, name, &parsed),
-    }
+            format!(" {summary}")
+        }
+    } else {
+        String::new()
+    };
+    format!("{icon} \x1b[38;5;245m{name}\x1b[0m{status}")
 }
 
 const DISPLAY_TRUNCATION_NOTICE: &str =
