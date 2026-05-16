@@ -54,6 +54,7 @@ pub mod task_registry;
 pub mod team_cron_registry;
 pub mod test_runner;
 pub mod debug_tools;
+pub mod dynamic_tools;
 pub mod fuzzy_match;
 pub mod smart_summary;
 pub mod code_formatter;
