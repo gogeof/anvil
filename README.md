@@ -113,6 +113,7 @@ anvil 最初 fork 自 claw-code（一个开源的 Rust 编程助手项目），
 | 文件 | 用途 |
 |------|------|
 | `FIRST_PRINCIPLES.md` | 🎯 **宪法** — 所有功能决策从这里推导 |
+| `CHANGELOG.md` | 📋 **版本特性列表** — 每次新增特性在此记录 |
 | `scripts/anvil-compare.py` | 对比系统 — 量化进步 |
 | `~/.anvil/settings.json` | 唯一配置入口 |
 
