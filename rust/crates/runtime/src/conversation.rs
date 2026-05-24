@@ -326,9 +326,13 @@ where
     }
 
     /// Returns `Err(RuntimeError::new("cancelled"))` if Ctrl+C was pressed.
-    /// Call this before long-running operations (API calls, tool execution).
-    fn check_aborted(&self) -> Result<(), RuntimeError> {
+    /// If `rollback_to` is provided and the signal is set, the session is
+    /// truncated to that message count before returning.
+    fn check_aborted(&mut self, rollback_to: Option<usize>) -> Result<(), RuntimeError> {
         if self.hook_abort_signal.is_aborted() {
+            if let Some(count) = rollback_to {
+                self.session.messages.truncate(count);
+            }
             Err(RuntimeError::new("cancelled"))
         } else {
             Ok(())
@@ -343,8 +347,9 @@ where
     ) -> Result<TurnSummary, RuntimeError> {
         let user_input = user_input.into();
 
-        // Check for Ctrl+C before starting.
-        self.check_aborted()?;
+        // Check for Ctrl+C before starting. No rollback needed: user text
+        // hasn't been pushed yet, so there's nothing to restore.
+        self.check_aborted(None)?;
 
         // ROADMAP #38: Session-health canary - probe if context was compacted
         if self.session.compaction.is_some() {
@@ -362,6 +367,9 @@ where
             .push_user_text(user_input)
             .map_err(|error| RuntimeError::new(error.to_string()))?;
 
+        // Save message count for rollback on Ctrl+C.
+        let turn_start_msg_count = self.session.messages.len();
+
         let mut assistant_messages = Vec::new();
         let mut tool_results = Vec::new();
         let mut prompt_cache_events = Vec::new();
@@ -378,7 +386,8 @@ where
             }
 
             // Check for Ctrl+C before making the API call.
-            self.check_aborted()?;
+            // Rollback session to pre-turn state on cancel.
+            self.check_aborted(Some(turn_start_msg_count))?;
 
             let request = ApiRequest {
                 system_prompt: self.system_prompt.clone(),
@@ -493,7 +502,7 @@ where
                     PermissionOutcome::Allow => {
                         self.record_tool_started(iterations, &tool_name);
                         // Check for Ctrl+C before executing a tool.
-                        self.check_aborted()?;
+                        self.check_aborted(Some(turn_start_msg_count))?;
                         let (mut output, mut is_error) =
                             match self.tool_executor.execute(&tool_name, &effective_input) {
                                 Ok(output) => (output, false),
