@@ -26,6 +26,47 @@ const GLOB_SEARCH_IGNORED_DIRS: &[&str] = &[
     "target",
     "dist",
     "coverage",
+    // Browser and app caches (heavy, irrelevant for code search).
+    "Cache",
+    "Code Cache",
+    ".cache",
+    "Library",
+    "Caches",
+    ".npm",
+    ".cargo",
+    ".rustup",
+    ".gradle",
+    ".m2",
+    ".nvm",
+    ".pyenv",
+    ".rbenv",
+    // Virtual environments and package dirs.
+    "__pycache__",
+    ".tox",
+    "venv",
+    ".venv",
+    ".env",
+    "env",
+    "vendor",
+    ".bundle",
+    // Build outputs and generated files.
+    "build",
+    ".next",
+    ".nuxt",
+    ".output",
+    ".turbo",
+    // IDE and editor data.
+    ".idea",
+    ".vscode",
+    ".vs",
+    ".DS_Store",
+    // Media and design assets (not useful for text search).
+    "Assets",
+    "assets",
+    "Fonts",
+    "fonts",
+    "Images",
+    "images",
 ];
 
 /// Check whether a file appears to contain binary content by examining
@@ -342,10 +383,14 @@ pub fn edit_file(
 /// Expands a glob pattern and returns matching filenames.
 pub fn glob_search(pattern: &str, path: Option<&str>) -> io::Result<GlobSearchOutput> {
     let started = Instant::now();
-    let base_dir = path
-        .map(normalize_path)
-        .transpose()?
-        .unwrap_or(std::env::current_dir()?);
+    let base_dir = if let Some(p) = path {
+        normalize_path(p)?
+    } else {
+        // Default to git root when no path is specified, so searches are
+        // constrained to the project directory rather than the entire cwd
+        // (which may be the home directory or root).
+        detect_git_root().unwrap_or_else(|| std::env::current_dir().unwrap_or_default())
+    };
     let search_pattern = if Path::new(pattern).is_absolute() {
         pattern.to_owned()
     } else {
@@ -515,6 +560,23 @@ fn should_skip_glob_dir(entry: &DirEntry) -> bool {
             .file_name()
             .to_str()
             .is_some_and(|name| GLOB_SEARCH_IGNORED_DIRS.contains(&name))
+}
+
+/// Try to detect the git repository root from the current directory.
+/// Returns `None` if not inside a git repository or if `git` is unavailable.
+fn detect_git_root() -> Option<PathBuf> {
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .ok()?;
+    if output.status.success() {
+        let path = String::from_utf8(output.stdout).ok()?;
+        let trimmed = path.trim();
+        if !trimmed.is_empty() {
+            return Some(PathBuf::from(trimmed));
+        }
+    }
+    None
 }
 
 fn derive_glob_walk_root(pattern: &str) -> PathBuf {
