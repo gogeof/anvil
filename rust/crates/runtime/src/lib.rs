@@ -47,6 +47,8 @@ pub mod ssh;
 mod session;
 pub mod session_control;
 pub use session_control::SessionStore;
+pub mod snapshot;
+pub use snapshot::{create_snapshot, list_snapshots, restore_snapshot, Snapshot, SnapshotError};
 mod sse;
 pub mod stale_base;
 pub mod stale_branch;
