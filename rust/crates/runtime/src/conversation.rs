@@ -7,6 +7,7 @@ use telemetry::SessionTracer;
 use crate::compact::{
     compact_session, estimate_session_tokens, CompactionConfig, CompactionResult,
 };
+use crate::context_budget::{estimate_context_size, format_budget_summary};
 use crate::config::RuntimeFeatureConfig;
 use crate::hooks::{HookAbortSignal, HookProgressReporter, HookRunResult, HookRunner};
 use crate::permissions::{
@@ -122,9 +123,10 @@ pub struct TurnSummary {
 }
 
 /// Details about automatic session compaction applied during a turn.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AutoCompactionEvent {
     pub removed_message_count: usize,
+    pub budget_summary: Option<String>,
 }
 
 /// Coordinates the model loop, tool execution, hooks, and session updates.
@@ -580,11 +582,18 @@ where
     }
 
     fn maybe_auto_compact(&mut self) -> Option<AutoCompactionEvent> {
+        // Check usage-based threshold first (actual API costs).
         if self.usage_tracker.cumulative_usage().input_tokens
             < self.auto_compaction_input_tokens_threshold
         {
             return None;
         }
+
+        // Estimate and format context budget for user-facing display.
+        let budget_summary = estimate_context_size(&self.session)
+            .ok()
+            .as_ref()
+            .map(format_budget_summary);
 
         let result = compact_session(
             &self.session,
@@ -601,6 +610,7 @@ where
         self.session = result.compacted_session;
         Some(AutoCompactionEvent {
             removed_message_count: result.removed_message_count,
+            budget_summary,
         })
     }
 
@@ -1633,12 +1643,11 @@ mod tests {
             .run_turn("trigger", None)
             .expect("turn should succeed");
 
-        assert_eq!(
-            summary.auto_compaction,
-            Some(AutoCompactionEvent {
-                removed_message_count: 2,
-            })
-        );
+        let auto_compaction = summary.auto_compaction;
+        assert!(auto_compaction.is_some(), "auto-compaction should trigger");
+        let ae = auto_compaction.unwrap();
+        assert_eq!(ae.removed_message_count, 2);
+        assert!(ae.budget_summary.is_some(), "budget_summary should be present");
         assert_eq!(runtime.session().messages[0].role, MessageRole::System);
     }
 
