@@ -1807,4 +1807,172 @@ mod workspace_sessions_dir_tests {
         fs::remove_dir_all(&tmp_a).ok();
         fs::remove_dir_all(&tmp_b).ok();
     }
+
+    #[test]
+    fn strip_orphan_tool_calls_keeps_complete_assistant_tool_turns() {
+        // A full turn: user → assistant(uses tool) → tool(result) should NOT be stripped.
+        let mut session = Session::new();
+        session.push_user_text("list files").expect("user msg");
+        session
+            .push_message(ConversationMessage::assistant(vec![
+                ContentBlock::Text {
+                    text: "Running command...".to_string(),
+                },
+                ContentBlock::ToolUse {
+                    id: "tu-1".to_string(),
+                    name: "bash".to_string(),
+                    input: "ls".to_string(),
+                },
+            ]))
+            .expect("assistant msg");
+        session
+            .push_message(ConversationMessage::tool_result(
+                "tu-1", "bash", "file1.txt", false,
+            ))
+            .expect("tool result");
+
+        let removed = session.strip_orphan_tool_calls();
+        assert_eq!(removed, 0, "complete turn should not be stripped");
+        assert_eq!(session.messages.len(), 3);
+    }
+
+    #[test]
+    fn strip_orphan_tool_calls_removes_trailing_assistant_with_unmatched_tool_use() {
+        // An assistant message with ToolUse but no following ToolResult should be stripped.
+        let mut session = Session::new();
+        session.push_user_text("search").expect("user msg");
+        session
+            .push_message(ConversationMessage::assistant(vec![
+                ContentBlock::ToolUse {
+                    id: "tu-orphan".to_string(),
+                    name: "grep_search".to_string(),
+                    input: "pattern".to_string(),
+                },
+            ]))
+            .expect("assistant msg with orphan tool use");
+
+        let removed = session.strip_orphan_tool_calls();
+        assert_eq!(removed, 1, "orphan assistant message should be removed");
+        assert_eq!(session.messages.len(), 1);
+    }
+
+    #[test]
+    fn strip_orphan_tool_calls_removes_trailing_tool_message_without_matching_assistant() {
+        // A Tool role message with no preceding matching ToolUse should be stripped.
+        let mut session = Session::new();
+        session.push_user_text("do something").expect("user msg");
+        session
+            .push_message(ConversationMessage::tool_result(
+                "nonexistent-tu",
+                "bash",
+                "output",
+                false,
+            ))
+            .expect("orphan tool result");
+
+        let removed = session.strip_orphan_tool_calls();
+        assert_eq!(removed, 1, "orphan tool result should be removed");
+        assert_eq!(session.messages.len(), 1);
+    }
+
+    #[test]
+    fn strip_orphan_tool_calls_removes_multiple_trailing_orphans() {
+        // Multiple consecutive orphan messages should all be stripped.
+        let mut session = Session::new();
+        session.push_user_text("do work").expect("user msg");
+        // Complete turn
+        session
+            .push_message(ConversationMessage::assistant(vec![
+                ContentBlock::ToolUse {
+                    id: "tu-valid".to_string(),
+                    name: "bash".to_string(),
+                    input: "echo done".to_string(),
+                },
+            ]))
+            .expect("assistant msg");
+        session
+            .push_message(ConversationMessage::tool_result(
+                "tu-valid", "bash", "done", false,
+            ))
+            .expect("tool result");
+        // Orphan assistant (no matching ToolResult)
+        session
+            .push_message(ConversationMessage::assistant(vec![
+                ContentBlock::ToolUse {
+                    id: "tu-orphan-1".to_string(),
+                    name: "read_file".to_string(),
+                    input: "path".to_string(),
+                },
+            ]))
+            .expect("orphan assistant 1");
+        // Orphan tool (no matching ToolUse)
+        session
+            .push_message(ConversationMessage::tool_result(
+                "tu-orphan-2",
+                "bash",
+                "stray output",
+                false,
+            ))
+            .expect("orphan tool");
+
+        let removed = session.strip_orphan_tool_calls();
+        assert_eq!(removed, 2, "both orphan messages should be removed");
+        assert_eq!(session.messages.len(), 3);
+    }
+
+    #[test]
+    fn strip_orphan_tool_calls_preserves_valid_tool_use_with_later_tool_result() {
+        // An assistant with ToolUse followed later (not immediately) by ToolResult is valid.
+        let mut session = Session::new();
+        session.push_user_text("first").expect("user msg");
+        session
+            .push_message(ConversationMessage::assistant(vec![
+                ContentBlock::ToolUse {
+                    id: "tu-later".to_string(),
+                    name: "bash".to_string(),
+                    input: "echo hi".to_string(),
+                },
+            ]))
+            .expect("assistant with tool use");
+        session.push_user_text("second").expect("user msg");
+        session
+            .push_message(ConversationMessage::assistant(vec![
+                ContentBlock::Text {
+                    text: "Final answer.".to_string(),
+                },
+            ]))
+            .expect("another assistant");
+        // Now the ToolResult comes much later
+        session
+            .push_message(ConversationMessage::tool_result(
+                "tu-later", "bash", "hi", false,
+            ))
+            .expect("tool result");
+
+        let removed = session.strip_orphan_tool_calls();
+        assert_eq!(
+            removed, 0,
+            "message with matching tool result should be kept"
+        );
+        assert_eq!(session.messages.len(), 5);
+    }
+
+    #[test]
+    fn strip_orphan_tool_calls_handles_empty_session() {
+        let mut session = Session::new();
+        let removed = session.strip_orphan_tool_calls();
+        assert_eq!(removed, 0);
+        assert_eq!(session.messages.len(), 0);
+    }
+
+    #[test]
+    fn strip_orphan_tool_calls_does_not_remove_user_messages() {
+        let mut session = Session::new();
+        session.push_user_text("hello").expect("user msg");
+        session.push_user_text("world").expect("user msg");
+
+        let removed = session.strip_orphan_tool_calls();
+        assert_eq!(removed, 0, "user messages should never be stripped");
+        assert_eq!(session.messages.len(), 2);
+    }
 }

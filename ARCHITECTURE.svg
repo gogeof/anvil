@@ -1,0 +1,865 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1280" width="1920" height="1280">
+  <defs>
+    <!-- 科幻网格背景 -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1a3a5c" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+    <pattern id="gridSmall" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#1a3a5c" stroke-width="0.3" opacity="0.15"/>
+    </pattern>
+
+    <!-- 发光滤镜 -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#00d4ff" flood-opacity="0.3"/>
+    </filter>
+    <filter id="shadowDeep">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0a1628" flood-opacity="0.8"/>
+    </filter>
+    <filter id="neonText">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- 渐变 -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#060d1a"/>
+      <stop offset="50%" stop-color="#0a1628"/>
+      <stop offset="100%" stop-color="#060d1a"/>
+    </linearGradient>
+
+    <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="30%" stop-color="#0088ff"/>
+      <stop offset="70%" stop-color="#7000ff"/>
+      <stop offset="100%" stop-color="#00d4ff"/>
+    </linearGradient>
+
+    <!-- 各层渐变 -->
+    <linearGradient id="layerCLI" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d2137"/>
+      <stop offset="100%" stop-color="#0a1a2e"/>
+    </linearGradient>
+    <linearGradient id="layerRuntime" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d2a3d"/>
+      <stop offset="100%" stop-color="#0a1e30"/>
+    </linearGradient>
+    <linearGradient id="layerAPI" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d2538"/>
+      <stop offset="100%" stop-color="#091d2e"/>
+    </linearGradient>
+    <linearGradient id="layerTools" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1f33"/>
+      <stop offset="100%" stop-color="#091928"/>
+    </linearGradient>
+    <linearGradient id="layerInfra" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1a2e"/>
+      <stop offset="100%" stop-color="#081626"/>
+    </linearGradient>
+    <linearGradient id="layerExternal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1528"/>
+      <stop offset="100%" stop-color="#081220"/>
+    </linearGradient>
+
+    <!-- 模块颜色 -->
+    <linearGradient id="modGrad1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="100%" stop-color="#0077b6"/>
+    </linearGradient>
+    <linearGradient id="modGrad2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00e676"/>
+      <stop offset="100%" stop-color="#00a86b"/>
+    </linearGradient>
+    <linearGradient id="modGrad3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff6b6b"/>
+      <stop offset="100%" stop-color="#c0392b"/>
+    </linearGradient>
+    <linearGradient id="modGrad4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#feca57"/>
+      <stop offset="100%" stop-color="#e67e22"/>
+    </linearGradient>
+    <linearGradient id="modGrad5" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a29bfe"/>
+      <stop offset="100%" stop-color="#6c5ce7"/>
+    </linearGradient>
+    <linearGradient id="modGrad6" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fd79a8"/>
+      <stop offset="100%" stop-color="#e84393"/>
+    </linearGradient>
+    <linearGradient id="modGrad7" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#55efc4"/>
+      <stop offset="100%" stop-color="#00b894"/>
+    </linearGradient>
+    <linearGradient id="modGrad8" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#74b9ff"/>
+      <stop offset="100%" stop-color="#0984e3"/>
+    </linearGradient>
+    <linearGradient id="modGrad9" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fdcb6e"/>
+      <stop offset="100%" stop-color="#f39c12"/>
+    </linearGradient>
+
+    <!-- 边框渐变动画 -->
+    <linearGradient id="borderAnim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00d4ff">
+        <animate attributeName="stop-color" values="#00d4ff;#7000ff;#00d4ff" dur="4s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#7000ff">
+        <animate attributeName="stop-color" values="#7000ff;#00d4ff;#7000ff" dur="4s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+
+    <!-- 箭头标记 -->
+    <marker id="arrowCyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#00d4ff" opacity="0.7"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#00e676" opacity="0.7"/>
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#a29bfe" opacity="0.7"/>
+    </marker>
+
+    <!-- 扫描线效果 -->
+    <linearGradient id="scanLine" x1="0" y1="0" x2="0" y2="40">
+      <stop offset="0%" stop-color="transparent"/>
+      <stop offset="48%" stop-color="transparent"/>
+      <stop offset="49%" stop-color="rgba(0,212,255,0.03)"/>
+      <stop offset="50%" stop-color="rgba(0,212,255,0.06)"/>
+      <stop offset="51%" stop-color="rgba(0,212,255,0.03)"/>
+      <stop offset="52%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="1920" height="1280" fill="url(#bgGrad)"/>
+  <rect width="1920" height="1280" fill="url(#grid)"/>
+  <rect width="1920" height="1280" fill="url(#gridSmall)"/>
+
+  <!-- 顶部装饰光晕 -->
+  <ellipse cx="960" cy="0" rx="800" ry="200" fill="url(#headerGrad)" opacity="0.04"/>
+  <ellipse cx="960" cy="0" rx="500" ry="120" fill="url(#headerGrad)" opacity="0.06"/>
+
+  <!-- ===== 标题区域 ===== -->
+  <g font-family="'Courier New', 'Menlo', monospace">
+    <!-- 标题横幅背景 -->
+    <rect x="80" y="30" width="1760" height="80" rx="4" fill="#0d1a2e" stroke="#00d4ff" stroke-width="1.5" opacity="0.6" filter="url(#shadow)"/>
+    <rect x="80" y="30" width="1760" height="80" rx="4" fill="url(#scanLine)" opacity="0.3"/>
+
+    <!-- ASCII 风格标题 -->
+    <text x="960" y="60" text-anchor="middle" font-size="11" fill="#00d4ff" font-weight="bold" letter-spacing="4" opacity="0.5">╔══════════════════════════════════════════════════════════════╗</text>
+    <text x="960" y="60" text-anchor="middle" font-size="11" fill="#00d4ff" font-weight="bold" letter-spacing="4" opacity="0.5" dy="45">╚══════════════════════════════════════════════════════════════╝</text>
+    <text x="960" y="49" text-anchor="middle" font-size="11" fill="#00d4ff" font-weight="bold" letter-spacing="4" opacity="0.3">║</text>
+    <text x="960" y="87" text-anchor="middle" font-size="11" fill="#00d4ff" font-weight="bold" letter-spacing="4" opacity="0.3">║</text>
+
+    <text x="960" y="76" text-anchor="middle" font-size="28" fill="url(#headerGrad)" font-weight="bold" letter-spacing="12" filter="url(#neonText)">ANVIL ARCHITECTURE</text>
+    <text x="1620" y="95" text-anchor="end" font-size="10" fill="#00d4ff" opacity="0.35" letter-spacing="2">v0.1.0 // SYSTEM MAP v2.1</text>
+  </g>
+
+  <!-- ===== 层定义 ===== -->
+
+  <!-- ========== LAYER 1: CLI 层 ========== -->
+  <g transform="translate(80, 140)">
+    <rect x="0" y="0" width="1760" height="130" rx="6" fill="url(#layerCLI)" stroke="#00d4ff" stroke-width="1" opacity="0.7" filter="url(#shadowDeep)"/>
+    <rect x="0" y="0" width="1760" height="130" rx="6" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.3"/>
+    <!-- 层标签 -->
+    <rect x="0" y="0" width="140" height="22" rx="3" fill="#00d4ff" opacity="0.15"/>
+    <text x="70" y="15" text-anchor="middle" font-size="10" fill="#00d4ff" font-family="'Courier New', monospace" font-weight="bold" letter-spacing="1">PRESENTATION</text>
+
+    <g font-family="'Courier New', 'Menlo', monospace">
+      <text x="15" y="44" font-size="9" fill="#00d4ff" opacity="0.5" letter-spacing="1">└─</text>
+      <text x="20" y="34" font-size="9" fill="#555" letter-spacing="1">layer</text>
+      <text x="20" y="46" font-size="11" fill="#00d4ff" font-weight="bold" letter-spacing="2">CLI / REPL</text>
+    </g>
+
+    <!-- 模块: main.rs -->
+    <rect x="160" y="30" width="180" height="36" rx="4" fill="#061525" stroke="#00d4ff" stroke-width="1.2" filter="url(#glow)"/>
+    <rect x="160" y="30" width="8" height="36" rx="2" fill="#00d4ff" opacity="0.3"/>
+    <text x="174" y="52" font-size="12" fill="#00d4ff" font-family="'Courier New', monospace" font-weight="bold">main.rs</text>
+    <text x="260" y="52" font-size="8" fill="#00d4ff" opacity="0.4" font-family="'Courier New', monospace">入口</text>
+
+    <!-- 模块: REPL -->
+    <rect x="360" y="30" width="180" height="36" rx="4" fill="#061525" stroke="#00e676" stroke-width="1.2" filter="url(#glow)"/>
+    <rect x="360" y="30" width="8" height="36" rx="2" fill="#00e676" opacity="0.3"/>
+    <text x="374" y="52" font-size="12" fill="#00e676" font-family="'Courier New', monospace" font-weight="bold">REPL Loop</text>
+    <text x="460" y="52" font-size="8" fill="#00e676" opacity="0.4" font-family="'Courier New', monospace">交互式</text>
+
+    <!-- 模块: CLI 解析 -->
+    <rect x="560" y="30" width="180" height="36" rx="4" fill="#061525" stroke="#a29bfe" stroke-width="1.2" filter="url(#glow)"/>
+    <rect x="560" y="30" width="8" height="36" rx="2" fill="#a29bfe" opacity="0.3"/>
+    <text x="574" y="52" font-size="12" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">CLI Args</text>
+    <text x="660" y="52" font-size="8" fill="#a29bfe" opacity="0.4" font-family="'Courier New', monospace">参数解析</text>
+
+    <!-- 模块: Completion -->
+    <rect x="760" y="30" width="180" height="36" rx="4" fill="#061525" stroke="#feca57" stroke-width="1.2" filter="url(#glow)"/>
+    <rect x="760" y="30" width="8" height="36" rx="2" fill="#feca57" opacity="0.3"/>
+    <text x="774" y="52" font-size="12" fill="#feca57" font-family="'Courier New', monospace" font-weight="bold">Completion</text>
+    <text x="860" y="52" font-size="8" fill="#feca57" opacity="0.4" font-family="'Courier New', monospace">自动补全</text>
+
+    <!-- 模块: Render -->
+    <rect x="960" y="30" width="180" height="36" rx="4" fill="#061525" stroke="#fd79a8" stroke-width="1.2" filter="url(#glow)"/>
+    <rect x="960" y="30" width="8" height="36" rx="2" fill="#fd79a8" opacity="0.3"/>
+    <text x="974" y="52" font-size="12" fill="#fd79a8" font-family="'Courier New', monospace" font-weight="bold">Renderer</text>
+    <text x="1060" y="52" font-size="8" fill="#fd79a8" opacity="0.4" font-family="'Courier New', monospace">终端渲染</text>
+
+    <!-- 模块: Spinner -->
+    <rect x="1160" y="30" width="180" height="36" rx="4" fill="#061525" stroke="#ff6b6b" stroke-width="1.2" filter="url(#glow)"/>
+    <rect x="1160" y="30" width="8" height="36" rx="2" fill="#ff6b6b" opacity="0.3"/>
+    <text x="1174" y="52" font-size="12" fill="#ff6b6b" font-family="'Courier New', monospace" font-weight="bold">Spinner</text>
+    <text x="1260" y="52" font-size="8" fill="#ff6b6b" opacity="0.4" font-family="'Courier New', monospace">加载动画</text>
+
+    <!-- 模块: Init -->
+    <rect x="1360" y="30" width="180" height="36" rx="4" fill="#061525" stroke="#55efc4" stroke-width="1.2" filter="url(#glow)"/>
+    <rect x="1360" y="30" width="8" height="36" rx="2" fill="#55efc4" opacity="0.3"/>
+    <text x="1374" y="52" font-size="12" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">Initialize</text>
+    <text x="1460" y="52" font-size="8" fill="#55efc4" opacity="0.4" font-family="'Courier New', monospace">项目初始化</text>
+
+    <!-- 模块: 输入 -->
+    <rect x="1560" y="30" width="180" height="36" rx="4" fill="#061525" stroke="#74b9ff" stroke-width="1.2" filter="url(#glow)"/>
+    <rect x="1560" y="30" width="8" height="36" rx="2" fill="#74b9ff" opacity="0.3"/>
+    <text x="1574" y="52" font-size="12" fill="#74b9ff" font-family="'Courier New', monospace" font-weight="bold">Input</text>
+    <text x="1660" y="52" font-size="8" fill="#74b9ff" opacity="0.4" font-family="'Courier New', monospace">输入处理</text>
+
+    <!-- 子标签行 -->
+    <g font-size="9" fill="#555" font-family="'Courier New', monospace">
+      <text x="160" y="90" fill="#00d4ff" opacity="0.4">rustyline</text>
+      <text x="360" y="90" fill="#00e676" opacity="0.4">interactive</text>
+      <text x="560" y="90" fill="#a29bfe" opacity="0.4">clap</text>
+      <text x="760" y="90" fill="#feca57" opacity="0.4">shell</text>
+      <text x="960" y="90" fill="#fd79a8" opacity="0.4">crossterm</text>
+      <text x="1160" y="90" fill="#ff6b6b" opacity="0.4">async</text>
+      <text x="1360" y="90" fill="#55efc4" opacity="0.4">repo init</text>
+      <text x="1560" y="90" fill="#74b9ff" opacity="0.4">raw mode</text>
+    </g>
+
+    <!-- 层间连接线 -->
+    <line x1="960" y1="130" x2="960" y2="145" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.4" marker-end="url(#arrowCyan)"/>
+  </g>
+
+  <!-- ========== LAYER 2: RUNTIME 核心层 ========== -->
+  <g transform="translate(80, 285)">
+    <rect x="0" y="0" width="1760" height="250" rx="6" fill="url(#layerRuntime)" stroke="#00e676" stroke-width="1" opacity="0.7" filter="url(#shadowDeep)"/>
+    <rect x="0" y="0" width="1760" height="250" rx="6" fill="none" stroke="#00e676" stroke-width="0.5" opacity="0.3"/>
+    <rect x="0" y="0" width="140" height="22" rx="3" fill="#00e676" opacity="0.15"/>
+    <text x="70" y="15" text-anchor="middle" font-size="10" fill="#00e676" font-family="'Courier New', monospace" font-weight="bold" letter-spacing="1">RUNTIME CORE</text>
+
+    <g font-family="'Courier New', 'Menlo', monospace">
+      <text x="15" y="44" font-size="9" fill="#00e676" opacity="0.5" letter-spacing="1">└─</text>
+      <text x="20" y="34" font-size="9" fill="#555" letter-spacing="1">layer</text>
+      <text x="20" y="46" font-size="11" fill="#00e676" font-weight="bold" letter-spacing="2">RUNTIME</text>
+    </g>
+
+    <!-- 第一行模块 -->
+    <g transform="translate(160, 25)">
+      <!-- Session -->
+      <rect x="0" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#00e676" stroke-width="1"/>
+      <rect x="0" y="0" width="6" height="40" rx="2" fill="#00e676" opacity="0.4"/>
+      <text x="12" y="16" font-size="10" fill="#00e676" font-family="'Courier New', monospace" font-weight="bold">Session</text>
+      <text x="12" y="30" font-size="7" fill="#00e676" opacity="0.5" font-family="'Courier New', monospace">对话会话管理</text>
+
+      <!-- Conversation -->
+      <rect x="170" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#00e676" stroke-width="1"/>
+      <rect x="170" y="0" width="6" height="40" rx="2" fill="#00e676" opacity="0.4"/>
+      <text x="182" y="16" font-size="10" fill="#00e676" font-family="'Courier New', monospace" font-weight="bold">Conversation</text>
+      <text x="182" y="30" font-size="7" fill="#00e676" opacity="0.5" font-family="'Courier New', monospace">对话循环引擎</text>
+
+      <!-- Prompt -->
+      <rect x="340" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#55efc4" stroke-width="1"/>
+      <rect x="340" y="0" width="6" height="40" rx="2" fill="#55efc4" opacity="0.4"/>
+      <text x="352" y="16" font-size="10" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">Prompt Sys</text>
+      <text x="352" y="30" font-size="7" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">System Prompt 组装</text>
+
+      <!-- Config -->
+      <rect x="510" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#feca57" stroke-width="1"/>
+      <rect x="510" y="0" width="6" height="40" rx="2" fill="#feca57" opacity="0.4"/>
+      <text x="522" y="16" font-size="10" fill="#feca57" font-family="'Courier New', monospace" font-weight="bold">Config</text>
+      <text x="522" y="30" font-size="7" fill="#feca57" opacity="0.5" font-family="'Courier New', monospace">配置加载 &amp; 解析</text>
+
+      <!-- Compaction -->
+      <rect x="680" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#a29bfe" stroke-width="1"/>
+      <rect x="680" y="0" width="6" height="40" rx="2" fill="#a29bfe" opacity="0.4"/>
+      <text x="692" y="16" font-size="10" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">Compaction</text>
+      <text x="692" y="30" font-size="7" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">对话压缩/摘要</text>
+
+      <!-- Telemetry -->
+      <rect x="850" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#fd79a8" stroke-width="1"/>
+      <rect x="850" y="0" width="6" height="40" rx="2" fill="#fd79a8" opacity="0.4"/>
+      <text x="862" y="16" font-size="10" fill="#fd79a8" font-family="'Courier New', monospace" font-weight="bold">Telemetry</text>
+      <text x="862" y="30" font-size="7" fill="#fd79a8" opacity="0.5" font-family="'Courier New', monospace">性能埋点系统</text>
+
+      <!-- Perf -->
+      <rect x="1020" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#74b9ff" stroke-width="1"/>
+      <rect x="1020" y="0" width="6" height="40" rx="2" fill="#74b9ff" opacity="0.4"/>
+      <text x="1032" y="16" font-size="10" fill="#74b9ff" font-family="'Courier New', monospace" font-weight="bold">Perf</text>
+      <text x="1032" y="30" font-size="7" fill="#74b9ff" opacity="0.5" font-family="'Courier New', monospace">性能监控模块</text>
+
+      <!-- Permission -->
+      <rect x="1190" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#ff6b6b" stroke-width="1"/>
+      <rect x="1190" y="0" width="6" height="40" rx="2" fill="#ff6b6b" opacity="0.4"/>
+      <text x="1202" y="16" font-size="10" fill="#ff6b6b" font-family="'Courier New', monospace" font-weight="bold">Permission</text>
+      <text x="1202" y="30" font-size="7" fill="#ff6b6b" opacity="0.5" font-family="'Courier New', monospace">权限评估引擎</text>
+
+      <!-- Sandbox -->
+      <rect x="1360" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#fdcb6e" stroke-width="1"/>
+      <rect x="1360" y="0" width="6" height="40" rx="2" fill="#fdcb6e" opacity="0.4"/>
+      <text x="1372" y="16" font-size="10" fill="#fdcb6e" font-family="'Courier New', monospace" font-weight="bold">Sandbox</text>
+      <text x="1372" y="30" font-size="7" fill="#fdcb6e" opacity="0.5" font-family="'Courier New', monospace">沙箱隔离层</text>
+    </g>
+
+    <!-- 第二行模块 -->
+    <g transform="translate(160, 78)">
+      <!-- Background Process -->
+      <rect x="0" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#00e676" stroke-width="1"/>
+      <rect x="0" y="0" width="6" height="40" rx="2" fill="#00e676" opacity="0.4"/>
+      <text x="12" y="16" font-size="10" fill="#00e676" font-family="'Courier New', monospace" font-weight="bold">Bkg Process</text>
+      <text x="12" y="30" font-size="7" fill="#00e676" opacity="0.5" font-family="'Courier New', monospace">后台进程管理</text>
+
+      <!-- Bash -->
+      <rect x="170" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#55efc4" stroke-width="1"/>
+      <rect x="170" y="0" width="6" height="40" rx="2" fill="#55efc4" opacity="0.4"/>
+      <text x="182" y="16" font-size="10" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">Bash Exec</text>
+      <text x="182" y="30" font-size="7" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">命令执行引擎</text>
+
+      <!-- MCP -->
+      <rect x="340" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#a29bfe" stroke-width="1"/>
+      <rect x="340" y="0" width="6" height="40" rx="2" fill="#a29bfe" opacity="0.4"/>
+      <text x="352" y="16" font-size="10" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">MCP Client</text>
+      <text x="352" y="30" font-size="7" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">MCP 协议客户端</text>
+
+      <!-- MCP Server -->
+      <rect x="510" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#a29bfe" stroke-width="1"/>
+      <rect x="510" y="0" width="6" height="40" rx="2" fill="#a29bfe" opacity="0.4"/>
+      <text x="522" y="16" font-size="10" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">MCP Server</text>
+      <text x="522" y="30" font-size="7" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">MCP 服务端管理</text>
+
+      <!-- Plugin Lifecycle -->
+      <rect x="680" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#ff6b6b" stroke-width="1"/>
+      <rect x="680" y="0" width="6" height="40" rx="2" fill="#ff6b6b" opacity="0.4"/>
+      <text x="692" y="16" font-size="10" fill="#ff6b6b" font-family="'Courier New', monospace" font-weight="bold">Plugin Life</text>
+      <text x="692" y="30" font-size="7" fill="#ff6b6b" opacity="0.5" font-family="'Courier New', monospace">插件生命周期</text>
+
+      <!-- Hooks -->
+      <rect x="850" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#fdcb6e" stroke-width="1"/>
+      <rect x="850" y="0" width="6" height="40" rx="2" fill="#fdcb6e" opacity="0.4"/>
+      <text x="862" y="16" font-size="10" fill="#fdcb6e" font-family="'Courier New', monospace" font-weight="bold">Hooks</text>
+      <text x="862" y="30" font-size="7" fill="#fdcb6e" opacity="0.5" font-family="'Courier New', monospace">钩子系统</text>
+
+      <!-- Optimized Tools -->
+      <rect x="1020" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#55efc4" stroke-width="1"/>
+      <rect x="1020" y="0" width="6" height="40" rx="2" fill="#55efc4" opacity="0.4"/>
+      <text x="1032" y="16" font-size="10" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">Opt Tools</text>
+      <text x="1032" y="30" font-size="7" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">优化工具（缓存/并行）</text>
+
+      <!-- Snapshot -->
+      <rect x="1190" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#74b9ff" stroke-width="1"/>
+      <rect x="1190" y="0" width="6" height="40" rx="2" fill="#74b9ff" opacity="0.4"/>
+      <text x="1202" y="16" font-size="10" fill="#74b9ff" font-family="'Courier New', monospace" font-weight="bold">Snapshot</text>
+      <text x="1202" y="30" font-size="7" fill="#74b9ff" opacity="0.5" font-family="'Courier New', monospace">会话快照</text>
+
+      <!-- Git Context -->
+      <rect x="1360" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#00e676" stroke-width="1"/>
+      <rect x="1360" y="0" width="6" height="40" rx="2" fill="#00e676" opacity="0.4"/>
+      <text x="1372" y="16" font-size="10" fill="#00e676" font-family="'Courier New', monospace" font-weight="bold">Git Context</text>
+      <text x="1372" y="30" font-size="7" fill="#00e676" opacity="0.5" font-family="'Courier New', monospace">Git 上下文集成</text>
+    </g>
+
+    <!-- 第三行模块 -->
+    <g transform="translate(160, 131)">
+      <!-- Bootstrap -->
+      <rect x="0" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#feca57" stroke-width="1"/>
+      <rect x="0" y="0" width="6" height="40" rx="2" fill="#feca57" opacity="0.4"/>
+      <text x="12" y="16" font-size="10" fill="#feca57" font-family="'Courier New', monospace" font-weight="bold">Bootstrap</text>
+      <text x="12" y="30" font-size="7" fill="#feca57" opacity="0.5" font-family="'Courier New', monospace">启动引导</text>
+
+      <!-- Agents Md -->
+      <rect x="170" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#fd79a8" stroke-width="1"/>
+      <rect x="170" y="0" width="6" height="40" rx="2" fill="#fd79a8" opacity="0.4"/>
+      <text x="182" y="16" font-size="10" fill="#fd79a8" font-family="'Courier New', monospace" font-weight="bold">Agents MD</text>
+      <text x="182" y="30" font-size="7" fill="#fd79a8" opacity="0.5" font-family="'Courier New', monospace">Agent 配置文件解析</text>
+
+      <!-- SSS / Remote -->
+      <rect x="340" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#74b9ff" stroke-width="1"/>
+      <rect x="340" y="0" width="6" height="40" rx="2" fill="#74b9ff" opacity="0.4"/>
+      <text x="352" y="16" font-size="10" fill="#74b9ff" font-family="'Courier New', monospace" font-weight="bold">SSH / Remote</text>
+      <text x="352" y="30" font-size="7" fill="#74b9ff" opacity="0.5" font-family="'Courier New', monospace">远程连接</text>
+
+      <!-- File Ops -->
+      <rect x="510" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#55efc4" stroke-width="1"/>
+      <rect x="510" y="0" width="6" height="40" rx="2" fill="#55efc4" opacity="0.4"/>
+      <text x="522" y="16" font-size="10" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">File Ops</text>
+      <text x="522" y="30" font-size="7" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">文件操作封装</text>
+
+      <!-- LSP Client -->
+      <rect x="680" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#a29bfe" stroke-width="1"/>
+      <rect x="680" y="0" width="6" height="40" rx="2" fill="#a29bfe" opacity="0.4"/>
+      <text x="692" y="16" font-size="10" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">LSP Client</text>
+      <text x="692" y="30" font-size="7" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">LSP 协议集成</text>
+
+      <!-- Smart Summary -->
+      <rect x="850" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#feca57" stroke-width="1"/>
+      <rect x="850" y="0" width="6" height="40" rx="2" fill="#feca57" opacity="0.4"/>
+      <text x="862" y="16" font-size="10" fill="#feca57" font-family="'Courier New', monospace" font-weight="bold">Smart Summary</text>
+      <text x="862" y="30" font-size="7" fill="#feca57" opacity="0.5" font-family="'Courier New', monospace">智能摘要</text>
+
+      <!-- Code Formatter -->
+      <rect x="1020" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#00e676" stroke-width="1"/>
+      <rect x="1020" y="0" width="6" height="40" rx="2" fill="#00e676" opacity="0.4"/>
+      <text x="1032" y="16" font-size="10" fill="#00e676" font-family="'Courier New', monospace" font-weight="bold">Formatter</text>
+      <text x="1032" y="30" font-size="7" fill="#00e676" opacity="0.5" font-family="'Courier New', monospace">代码格式化</text>
+
+      <!-- Dyn Tools -->
+      <rect x="1190" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#fd79a8" stroke-width="1"/>
+      <rect x="1190" y="0" width="6" height="40" rx="2" fill="#fd79a8" opacity="0.4"/>
+      <text x="1202" y="16" font-size="10" fill="#fd79a8" font-family="'Courier New', monospace" font-weight="bold">Dyn Tools</text>
+      <text x="1202" y="30" font-size="7" fill="#fd79a8" opacity="0.5" font-family="'Courier New', monospace">动态工具注册</text>
+
+      <!-- Debug Tools -->
+      <rect x="1360" y="0" width="155" height="40" rx="4" fill="#061e20" stroke="#ff6b6b" stroke-width="1"/>
+      <rect x="1360" y="0" width="6" height="40" rx="2" fill="#ff6b6b" opacity="0.4"/>
+      <text x="1372" y="16" font-size="10" fill="#ff6b6b" font-family="'Courier New', monospace" font-weight="bold">Debug Tools</text>
+      <text x="1372" y="30" font-size="7" fill="#ff6b6b" opacity="0.5" font-family="'Courier New', monospace">调试工具</text>
+    </g>
+
+    <!-- 第四行: 优化子模块 -->
+    <g transform="translate(160, 184)">
+      <rect x="0" y="0" width="480" height="42" rx="4" fill="#061e20" stroke="#55efc4" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>
+      <text x="10" y="18" font-size="8" fill="#55efc4" font-family="'Courier New', monospace" opacity="0.7" letter-spacing="1">OPTIMIZED TOOLS SUBSYSTEM</text>
+      <text x="240" y="18" text-anchor="middle" font-size="7" fill="#55efc4" font-family="'Courier New', monospace" opacity="0.4">─ 性能优化子模块 ─</text>
+
+      <!-- Function Reader -->
+      <rect x="10" y="24" width="140" height="15" rx="2" fill="#0a2a20" stroke="#55efc4" stroke-width="0.5"/>
+      <text x="80" y="35" text-anchor="middle" font-size="8" fill="#55efc4" font-family="'Courier New', monospace">Fn Reader</text>
+
+      <!-- Semantic Cache -->
+      <rect x="160" y="24" width="150" height="15" rx="2" fill="#0a2a20" stroke="#55efc4" stroke-width="0.5"/>
+      <text x="235" y="35" text-anchor="middle" font-size="8" fill="#55efc4" font-family="'Courier New', monospace">Semantic Cache</text>
+
+      <!-- Parallel Executor -->
+      <rect x="320" y="24" width="150" height="15" rx="2" fill="#0a2a20" stroke="#55efc4" stroke-width="0.5"/>
+      <text x="395" y="35" text-anchor="middle" font-size="8" fill="#55efc4" font-family="'Courier New', monospace">Parallel Executor</text>
+    </g>
+
+    <!-- 层间连接线 -->
+    <line x1="960" y1="250" x2="960" y2="265" stroke="#00e676" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.4" marker-end="url(#arrowGreen)"/>
+  </g>
+
+  <!-- ========== LAYER 3: API 层 ========== -->
+  <g transform="translate(80, 550)">
+    <rect x="0" y="0" width="1760" height="125" rx="6" fill="url(#layerAPI)" stroke="#a29bfe" stroke-width="1" opacity="0.7" filter="url(#shadowDeep)"/>
+    <rect x="0" y="0" width="1760" height="125" rx="6" fill="none" stroke="#a29bfe" stroke-width="0.5" opacity="0.3"/>
+    <rect x="0" y="0" width="140" height="22" rx="3" fill="#a29bfe" opacity="0.15"/>
+    <text x="70" y="15" text-anchor="middle" font-size="10" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold" letter-spacing="1">API LAYER</text>
+
+    <g font-family="'Courier New', 'Menlo', monospace">
+      <text x="15" y="44" font-size="9" fill="#a29bfe" opacity="0.5" letter-spacing="1">└─</text>
+      <text x="20" y="34" font-size="9" fill="#555" letter-spacing="1">layer</text>
+      <text x="20" y="46" font-size="11" fill="#a29bfe" font-weight="bold" letter-spacing="2">API  CLIENT</text>
+    </g>
+
+    <!-- 模块 -->
+    <g transform="translate(160, 22)">
+      <!-- Client -->
+      <rect x="0" y="0" width="155" height="40" rx="4" fill="#1a0a2e" stroke="#a29bfe" stroke-width="1"/>
+      <rect x="0" y="0" width="6" height="40" rx="2" fill="#a29bfe" opacity="0.4"/>
+      <text x="12" y="16" font-size="10" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">APIClient</text>
+      <text x="12" y="30" font-size="7" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">核心 API 客户端</text>
+
+      <!-- OpenAI Compat -->
+      <rect x="170" y="0" width="155" height="40" rx="4" fill="#1a0a2e" stroke="#6c5ce7" stroke-width="1"/>
+      <rect x="170" y="0" width="6" height="40" rx="2" fill="#6c5ce7" opacity="0.4"/>
+      <text x="182" y="16" font-size="10" fill="#6c5ce7" font-family="'Courier New', monospace" font-weight="bold">OpenAI Compat</text>
+      <text x="182" y="30" font-size="7" fill="#6c5ce7" opacity="0.5" font-family="'Courier New', monospace">OpenAI 兼容协议</text>
+
+      <!-- Anthropic -->
+      <rect x="340" y="0" width="155" height="40" rx="4" fill="#1a0a2e" stroke="#a29bfe" stroke-width="1"/>
+      <rect x="340" y="0" width="6" height="40" rx="2" fill="#a29bfe" opacity="0.4"/>
+      <text x="352" y="16" font-size="10" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">Anthropic</text>
+      <text x="352" y="30" font-size="7" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">Anthropic 协议</text>
+
+      <!-- HTTP Client -->
+      <rect x="510" y="0" width="155" height="40" rx="4" fill="#1a0a2e" stroke="#74b9ff" stroke-width="1"/>
+      <rect x="510" y="0" width="6" height="40" rx="2" fill="#74b9ff" opacity="0.4"/>
+      <text x="522" y="16" font-size="10" fill="#74b9ff" font-family="'Courier New', monospace" font-weight="bold">HTTP Client</text>
+      <text x="522" y="30" font-size="7" fill="#74b9ff" opacity="0.5" font-family="'Courier New', monospace">HTTP 传输层</text>
+
+      <!-- SSE -->
+      <rect x="680" y="0" width="155" height="40" rx="4" fill="#1a0a2e" stroke="#55efc4" stroke-width="1"/>
+      <rect x="680" y="0" width="6" height="40" rx="2" fill="#55efc4" opacity="0.4"/>
+      <text x="692" y="16" font-size="10" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">SSE Stream</text>
+      <text x="692" y="30" font-size="7" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">SSE 流式处理</text>
+
+      <!-- Types -->
+      <rect x="850" y="0" width="155" height="40" rx="4" fill="#1a0a2e" stroke="#feca57" stroke-width="1"/>
+      <rect x="850" y="0" width="6" height="40" rx="2" fill="#feca57" opacity="0.4"/>
+      <text x="862" y="16" font-size="10" fill="#feca57" font-family="'Courier New', monospace" font-weight="bold">Types</text>
+      <text x="862" y="30" font-size="7" fill="#feca57" opacity="0.5" font-family="'Courier New', monospace">消息类型定义</text>
+
+      <!-- Prompt Cache -->
+      <rect x="1020" y="0" width="155" height="40" rx="4" fill="#1a0a2e" stroke="#fd79a8" stroke-width="1"/>
+      <rect x="1020" y="0" width="6" height="40" rx="2" fill="#fd79a8" opacity="0.4"/>
+      <text x="1032" y="16" font-size="10" fill="#fd79a8" font-family="'Courier New', monospace" font-weight="bold">Prompt Cache</text>
+      <text x="1032" y="30" font-size="7" fill="#fd79a8" opacity="0.5" font-family="'Courier New', monospace">提示缓存管理</text>
+
+      <!-- Error -->
+      <rect x="1190" y="0" width="155" height="40" rx="4" fill="#1a0a2e" stroke="#ff6b6b" stroke-width="1"/>
+      <rect x="1190" y="0" width="6" height="40" rx="2" fill="#ff6b6b" opacity="0.4"/>
+      <text x="1202" y="16" font-size="10" fill="#ff6b6b" font-family="'Courier New', monospace" font-weight="bold">Error</text>
+      <text x="1202" y="30" font-size="7" fill="#ff6b6b" opacity="0.5" font-family="'Courier New', monospace">错误类型定义</text>
+
+      <!-- Provider -->
+      <rect x="1360" y="0" width="155" height="40" rx="4" fill="#1a0a2e" stroke="#00d4ff" stroke-width="1"/>
+      <rect x="1360" y="0" width="6" height="40" rx="2" fill="#00d4ff" opacity="0.4"/>
+      <text x="1372" y="16" font-size="10" fill="#00d4ff" font-family="'Courier New', monospace" font-weight="bold">Provider</text>
+      <text x="1372" y="30" font-size="7" fill="#00d4ff" opacity="0.5" font-family="'Courier New', monospace">供应商抽象</text>
+    </g>
+
+    <!-- 供应商信息 -->
+    <g transform="translate(160, 72)">
+      <text x="0" y="12" font-size="7" fill="#555" font-family="'Courier New', monospace" letter-spacing="0.5">▸ DEEPSEEK (primary)  ▸ ANTHROPIC (secondary)  ▸ OPENROUTER  ▸ TOGETHER  ▸ BAIDU QIANFAN</text>
+    </g>
+
+    <!-- 层间连接线 -->
+    <line x1="960" y1="125" x2="960" y2="140" stroke="#a29bfe" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.4" marker-end="url(#arrowPurple)"/>
+  </g>
+
+  <!-- ========== LAYER 4: TOOLS 层 ========== -->
+  <g transform="translate(80, 690)">
+    <rect x="0" y="0" width="1760" height="145" rx="6" fill="url(#layerTools)" stroke="#feca57" stroke-width="1" opacity="0.7" filter="url(#shadowDeep)"/>
+    <rect x="0" y="0" width="1760" height="145" rx="6" fill="none" stroke="#feca57" stroke-width="0.5" opacity="0.3"/>
+    <rect x="0" y="0" width="140" height="22" rx="3" fill="#feca57" opacity="0.15"/>
+    <text x="70" y="15" text-anchor="middle" font-size="10" fill="#feca57" font-family="'Courier New', monospace" font-weight="bold" letter-spacing="1">TOOLS</text>
+
+    <g font-family="'Courier New', 'Menlo', monospace">
+      <text x="15" y="44" font-size="9" fill="#feca57" opacity="0.5" letter-spacing="1">└─</text>
+      <text x="20" y="34" font-size="9" fill="#555" letter-spacing="1">layer</text>
+      <text x="20" y="46" font-size="11" fill="#feca57" font-weight="bold" letter-spacing="2">CORE TOOLKIT</text>
+      <text x="20" y="100" font-size="8" fill="#555" letter-spacing="0.5">四大基本能力：READ · WRITE · EXECUTE · SEARCH</text>
+    </g>
+
+    <!-- 工具网格 -->
+    <g transform="translate(160, 22)">
+      <!-- Bash -->
+      <rect x="0" y="0" width="185" height="50" rx="4" fill="#1a0e08" stroke="#ff6b6b" stroke-width="1.2">
+        <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite"/>
+      </rect>
+      <circle cx="15" cy="16" r="4" fill="#ff6b6b" opacity="0.6"/>
+      <text x="25" y="20" font-size="11" fill="#ff6b6b" font-family="'Courier New', monospace" font-weight="bold">bash</text>
+      <text x="25" y="36" font-size="8" fill="#ff6b6b" opacity="0.5" font-family="'Courier New', monospace">DangerFullAccess</text>
+      <text x="175" y="13" text-anchor="end" font-size="7" fill="#ff6b6b" opacity="0.3" font-family="'Courier New', monospace">EXEC</text>
+
+      <!-- read_file -->
+      <rect x="200" y="0" width="185" height="50" rx="4" fill="#0a1a20" stroke="#55efc4" stroke-width="1"/>
+      <circle cx="215" cy="16" r="4" fill="#55efc4" opacity="0.6"/>
+      <text x="225" y="20" font-size="11" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">read_file</text>
+      <text x="225" y="36" font-size="8" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">ReadOnly</text>
+      <text x="375" y="13" text-anchor="end" font-size="7" fill="#55efc4" opacity="0.3" font-family="'Courier New', monospace">READ</text>
+
+      <!-- write_file -->
+      <rect x="400" y="0" width="185" height="50" rx="4" fill="#0a1a15" stroke="#00b894" stroke-width="1"/>
+      <circle cx="415" cy="16" r="4" fill="#00b894" opacity="0.6"/>
+      <text x="425" y="20" font-size="11" fill="#00b894" font-family="'Courier New', monospace" font-weight="bold">write_file</text>
+      <text x="425" y="36" font-size="8" fill="#00b894" opacity="0.5" font-family="'Courier New', monospace">WorkspaceWrite</text>
+      <text x="575" y="13" text-anchor="end" font-size="7" fill="#00b894" opacity="0.3" font-family="'Courier New', monospace">WRITE</text>
+
+      <!-- edit_file -->
+      <rect x="600" y="0" width="185" height="50" rx="4" fill="#0a1a15" stroke="#55efc4" stroke-width="1"/>
+      <circle cx="615" cy="16" r="4" fill="#55efc4" opacity="0.6"/>
+      <text x="625" y="20" font-size="11" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">edit_file</text>
+      <text x="625" y="36" font-size="8" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">WorkspaceWrite</text>
+      <text x="775" y="13" text-anchor="end" font-size="7" fill="#55efc4" opacity="0.3" font-family="'Courier New', monospace">WRITE</text>
+
+      <!-- grep_search -->
+      <rect x="800" y="0" width="185" height="50" rx="4" fill="#0a1020" stroke="#74b9ff" stroke-width="1"/>
+      <circle cx="815" cy="16" r="4" fill="#74b9ff" opacity="0.6"/>
+      <text x="825" y="20" font-size="11" fill="#74b9ff" font-family="'Courier New', monospace" font-weight="bold">grep_search</text>
+      <text x="825" y="36" font-size="8" fill="#74b9ff" opacity="0.5" font-family="'Courier New', monospace">ReadOnly</text>
+      <text x="975" y="13" text-anchor="end" font-size="7" fill="#74b9ff" opacity="0.3" font-family="'Courier New', monospace">SEARCH</text>
+
+      <!-- glob_search -->
+      <rect x="1000" y="0" width="185" height="50" rx="4" fill="#0a1020" stroke="#74b9ff" stroke-width="1"/>
+      <circle cx="1015" cy="16" r="4" fill="#74b9ff" opacity="0.6"/>
+      <text x="1025" y="20" font-size="11" fill="#74b9ff" font-family="'Courier New', monospace" font-weight="bold">glob_search</text>
+      <text x="1025" y="36" font-size="8" fill="#74b9ff" opacity="0.5" font-family="'Courier New', monospace">ReadOnly</text>
+      <text x="1175" y="13" text-anchor="end" font-size="7" fill="#74b9ff" opacity="0.3" font-family="'Courier New', monospace">SEARCH</text>
+
+      <!-- WebFetch -->
+      <rect x="1200" y="0" width="185" height="50" rx="4" fill="#0a1020" stroke="#a29bfe" stroke-width="1"/>
+      <circle cx="1215" cy="16" r="4" fill="#a29bfe" opacity="0.6"/>
+      <text x="1225" y="20" font-size="11" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">WebFetch</text>
+      <text x="1225" y="36" font-size="8" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">ReadOnly</text>
+      <text x="1375" y="13" text-anchor="end" font-size="7" fill="#a29bfe" opacity="0.3" font-family="'Courier New', monospace">SEARCH</text>
+
+      <!-- WebSearch -->
+      <rect x="1400" y="0" width="185" height="50" rx="4" fill="#0a1020" stroke="#fd79a8" stroke-width="1"/>
+      <circle cx="1415" cy="16" r="4" fill="#fd79a8" opacity="0.6"/>
+      <text x="1425" y="20" font-size="11" fill="#fd79a8" font-family="'Courier New', monospace" font-weight="bold">WebSearch</text>
+      <text x="1425" y="36" font-size="8" fill="#fd79a8" opacity="0.5" font-family="'Courier New', monospace">ReadOnly</text>
+      <text x="1575" y="13" text-anchor="end" font-size="7" fill="#fd79a8" opacity="0.3" font-family="'Courier New', monospace">SEARCH</text>
+
+      <!-- 工具额外信息 -->
+      <g transform="translate(0, 58)">
+        <text x="0" y="10" font-size="7" fill="#feca57" opacity="0.3" font-family="'Courier New', monospace">▸ 8 tools from first principles ▸ Least privilege design ▸ MCP plugin tools bridge</text>
+      </g>
+    </g>
+
+    <!-- 层间连接线 -->
+    <line x1="960" y1="145" x2="960" y2="160" stroke="#feca57" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.4" marker-end="url(#arrowCyan)"/>
+  </g>
+
+  <!-- ========== LAYER 5: COMMANDS & PLUGINS ========== -->
+  <g transform="translate(80, 850)">
+    <rect x="0" y="0" width="860" height="150" rx="6" fill="url(#layerInfra)" stroke="#fd79a8" stroke-width="1" opacity="0.7" filter="url(#shadowDeep)"/>
+    <rect x="0" y="0" width="860" height="150" rx="6" fill="none" stroke="#fd79a8" stroke-width="0.5" opacity="0.3"/>
+    <rect x="0" y="0" width="140" height="22" rx="3" fill="#fd79a8" opacity="0.15"/>
+    <text x="70" y="15" text-anchor="middle" font-size="10" fill="#fd79a8" font-family="'Courier New', monospace" font-weight="bold" letter-spacing="1">COMMANDS</text>
+
+    <g font-family="'Courier New', 'Menlo', monospace">
+      <text x="15" y="44" font-size="9" fill="#fd79a8" opacity="0.5" letter-spacing="1">└─</text>
+      <text x="20" y="34" font-size="9" fill="#555" letter-spacing="1">layer</text>
+      <text x="20" y="46" font-size="11" fill="#fd79a8" font-weight="bold" letter-spacing="2">SLASH COMMANDS</text>
+    </g>
+
+    <g transform="translate(160, 22)">
+      <!-- /agents -->
+      <rect x="0" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#e84393" stroke-width="1"/>
+      <text x="8" y="18" font-size="11" fill="#e84393" font-family="'Courier New', monospace" font-weight="bold">/agents</text>
+      <text x="8" y="33" font-size="7" fill="#e84393" opacity="0.5" font-family="'Courier New', monospace">agent 管理</text>
+
+      <!-- /mcp -->
+      <rect x="145" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#a29bfe" stroke-width="1"/>
+      <text x="153" y="18" font-size="11" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">/mcp</text>
+      <text x="153" y="33" font-size="7" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">MCP 服务器</text>
+
+      <!-- /plugins -->
+      <rect x="290" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#6c5ce7" stroke-width="1"/>
+      <text x="298" y="18" font-size="11" fill="#6c5ce7" font-family="'Courier New', monospace" font-weight="bold">/plugins</text>
+      <text x="298" y="33" font-size="7" fill="#6c5ce7" opacity="0.5" font-family="'Courier New', monospace">插件管理</text>
+
+      <!-- /skills -->
+      <rect x="435" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#55efc4" stroke-width="1"/>
+      <text x="443" y="18" font-size="11" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">/skills</text>
+      <text x="443" y="33" font-size="7" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">技能管理</text>
+
+      <!-- /status -->
+      <rect x="580" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#feca57" stroke-width="1"/>
+      <text x="588" y="18" font-size="11" fill="#feca57" font-family="'Courier New', monospace" font-weight="bold">/status</text>
+      <text x="588" y="33" font-size="7" fill="#feca57" opacity="0.5" font-family="'Courier New', monospace">会话状态</text>
+
+      <!-- /help -->
+      <rect x="725" y="0" width="125" height="42" rx="4" fill="#1a0828" stroke="#00d4ff" stroke-width="1"/>
+      <text x="733" y="18" font-size="11" fill="#00d4ff" font-family="'Courier New', monospace" font-weight="bold">/help</text>
+      <text x="733" y="33" font-size="7" fill="#00d4ff" opacity="0.5" font-family="'Courier New', monospace">帮助信息</text>
+    </g>
+
+    <!-- 下半部分: 更多 slash 命令 -->
+    <g transform="translate(160, 75)">
+      <rect x="0" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#ff6b6b" stroke-width="1"/>
+      <text x="8" y="18" font-size="11" fill="#ff6b6b" font-family="'Courier New', monospace" font-weight="bold">/diff</text>
+      <text x="8" y="33" font-size="7" fill="#ff6b6b" opacity="0.5" font-family="'Courier New', monospace">差异查看</text>
+
+      <rect x="145" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#00b894" stroke-width="1"/>
+      <text x="153" y="18" font-size="11" fill="#00b894" font-family="'Courier New', monospace" font-weight="bold">/commit</text>
+      <text x="153" y="33" font-size="7" fill="#00b894" opacity="0.5" font-family="'Courier New', monospace">提交代码</text>
+
+      <rect x="290" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#74b9ff" stroke-width="1"/>
+      <text x="298" y="18" font-size="11" fill="#74b9ff" font-family="'Courier New', monospace" font-weight="bold">/metrics</text>
+      <text x="298" y="33" font-size="7" fill="#74b9ff" opacity="0.5" font-family="'Courier New', monospace">遥测指标</text>
+
+      <rect x="435" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#fd79a8" stroke-width="1"/>
+      <text x="443" y="18" font-size="11" fill="#fd79a8" font-family="'Courier New', monospace" font-weight="bold">/compact</text>
+      <text x="443" y="33" font-size="7" fill="#fd79a8" opacity="0.5" font-family="'Courier New', monospace">压缩对话</text>
+
+      <rect x="580" y="0" width="135" height="42" rx="4" fill="#1a0828" stroke="#fdcb6e" stroke-width="1"/>
+      <text x="588" y="18" font-size="11" fill="#fdcb6e" font-family="'Courier New', monospace" font-weight="bold">/ssh</text>
+      <text x="588" y="33" font-size="7" fill="#fdcb6e" opacity="0.5" font-family="'Courier New', monospace">远程连接</text>
+
+      <rect x="725" y="0" width="125" height="42" rx="4" fill="#1a0828" stroke="#f39c12" stroke-width="1"/>
+      <text x="733" y="18" font-size="11" fill="#f39c12" font-family="'Courier New', monospace" font-weight="bold">/snapshot</text>
+      <text x="733" y="33" font-size="7" fill="#f39c12" opacity="0.5" font-family="'Courier New', monospace">会话快照</text>
+    </g>
+  </g>
+
+  <!-- ========== LAYER 5b: PLUGINS (右侧) ========== -->
+  <g transform="translate(980, 850)">
+    <rect x="0" y="0" width="860" height="150" rx="6" fill="url(#layerInfra)" stroke="#6c5ce7" stroke-width="1" opacity="0.7" filter="url(#shadowDeep)"/>
+    <rect x="0" y="0" width="860" height="150" rx="6" fill="none" stroke="#6c5ce7" stroke-width="0.5" opacity="0.3"/>
+    <rect x="0" y="0" width="140" height="22" rx="3" fill="#6c5ce7" opacity="0.15"/>
+    <text x="70" y="15" text-anchor="middle" font-size="10" fill="#6c5ce7" font-family="'Courier New', monospace" font-weight="bold" letter-spacing="1">PLUGINS</text>
+
+    <g font-family="'Courier New', 'Menlo', monospace">
+      <text x="15" y="44" font-size="9" fill="#6c5ce7" opacity="0.5" letter-spacing="1">└─</text>
+      <text x="20" y="34" font-size="9" fill="#555" letter-spacing="1">layer</text>
+      <text x="20" y="46" font-size="11" fill="#6c5ce7" font-weight="bold" letter-spacing="2">PLUGIN SYSTEM</text>
+    </g>
+
+    <g transform="translate(160, 22)">
+      <!-- Plugin Registry -->
+      <rect x="0" y="0" width="165" height="40" rx="4" fill="#1a0828" stroke="#6c5ce7" stroke-width="1"/>
+      <rect x="0" y="0" width="6" height="40" rx="2" fill="#6c5ce7" opacity="0.4"/>
+      <text x="12" y="16" font-size="10" fill="#6c5ce7" font-family="'Courier New', monospace" font-weight="bold">PluginRegistry</text>
+      <text x="12" y="30" font-size="7" fill="#6c5ce7" opacity="0.5" font-family="'Courier New', monospace">插件注册管理</text>
+
+      <!-- Plugin Manager -->
+      <rect x="180" y="0" width="165" height="40" rx="4" fill="#1a0828" stroke="#a29bfe" stroke-width="1"/>
+      <rect x="180" y="0" width="6" height="40" rx="2" fill="#a29bfe" opacity="0.4"/>
+      <text x="192" y="16" font-size="10" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">PluginManager</text>
+      <text x="192" y="30" font-size="7" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">安装/卸载/更新</text>
+
+      <!-- Plugin Kinds -->
+      <rect x="360" y="0" width="165" height="40" rx="4" fill="#1a0828" stroke="#e84393" stroke-width="1"/>
+      <rect x="360" y="0" width="6" height="40" rx="2" fill="#e84393" opacity="0.4"/>
+      <text x="372" y="16" font-size="10" fill="#e84393" font-family="'Courier New', monospace" font-weight="bold">Plugin Kinds</text>
+      <text x="372" y="30" font-size="7" fill="#e84393" opacity="0.5" font-family="'Courier New', monospace">Builtin/Bundled/External</text>
+
+      <!-- Plugin Hooks -->
+      <rect x="540" y="0" width="165" height="40" rx="4" fill="#1a0828" stroke="#feca57" stroke-width="1"/>
+      <rect x="540" y="0" width="6" height="40" rx="2" fill="#feca57" opacity="0.4"/>
+      <text x="552" y="16" font-size="10" fill="#feca57" font-family="'Courier New', monospace" font-weight="bold">Plugin Hooks</text>
+      <text x="552" y="30" font-size="7" fill="#feca57" opacity="0.5" font-family="'Courier New', monospace">Pre/Post 钩子</text>
+
+      <!-- Plugin Tool Bridge -->
+      <rect x="720" y="0" width="130" height="40" rx="4" fill="#1a0828" stroke="#55efc4" stroke-width="1"/>
+      <rect x="720" y="0" width="6" height="40" rx="2" fill="#55efc4" opacity="0.4"/>
+      <text x="732" y="16" font-size="10" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">Tool Bridge</text>
+      <text x="732" y="30" font-size="7" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">工具桥接</text>
+    </g>
+
+    <g transform="translate(160, 72)">
+      <text x="0" y="12" font-size="7" fill="#555" font-family="'Courier New', monospace" letter-spacing="0.5">▸ Plugin Trait  ▸ PluginTool (stdin/stdout)  ▸ PluginManifest  ▸ Git/Local install  ▸ Marketplace</text>
+    </g>
+  </g>
+
+  <!-- ========== LAYER 6: EXTERNAL ========== -->
+  <g transform="translate(80, 1020)">
+    <rect x="0" y="0" width="1760" height="100" rx="6" fill="url(#layerExternal)" stroke="#ff6b6b" stroke-width="1" opacity="0.7" filter="url(#shadowDeep)"/>
+    <rect x="0" y="0" width="1760" height="100" rx="6" fill="none" stroke="#ff6b6b" stroke-width="0.5" opacity="0.3"/>
+    <rect x="0" y="0" width="140" height="22" rx="3" fill="#ff6b6b" opacity="0.15"/>
+    <text x="70" y="15" text-anchor="middle" font-size="10" fill="#ff6b6b" font-family="'Courier New', monospace" font-weight="bold" letter-spacing="1">EXTERNAL</text>
+
+    <g font-family="'Courier New', 'Menlo', monospace">
+      <text x="15" y="44" font-size="9" fill="#ff6b6b" opacity="0.5" letter-spacing="1">└─</text>
+      <text x="20" y="34" font-size="9" fill="#555" letter-spacing="1">layer</text>
+      <text x="20" y="46" font-size="11" fill="#ff6b6b" font-weight="bold" letter-spacing="2">EXTERNAL INTEGRATIONS</text>
+    </g>
+
+    <g transform="translate(160, 22)">
+      <!-- DeepSeek -->
+      <rect x="0" y="0" width="230" height="50" rx="4" fill="#1a0a0a" stroke="#ff6b6b" stroke-width="1"/>
+      <text x="115" y="16" text-anchor="middle" font-size="11" fill="#ff6b6b" font-family="'Courier New', monospace" font-weight="bold">DEEPSEEK</text>
+      <text x="115" y="30" text-anchor="middle" font-size="7" fill="#ff6b6b" opacity="0.5" font-family="'Courier New', monospace">V4-Flash / V4-Pro · 1M Context</text>
+      <text x="115" y="42" text-anchor="middle" font-size="6" fill="#ff6b6b" opacity="0.3" font-family="'Courier New', monospace">PRIMARY AI PROVIDER</text>
+
+      <!-- Anthropic -->
+      <rect x="250" y="0" width="230" height="50" rx="4" fill="#0a0a1a" stroke="#a29bfe" stroke-width="1"/>
+      <text x="365" y="16" text-anchor="middle" font-size="11" fill="#a29bfe" font-family="'Courier New', monospace" font-weight="bold">ANTHROPIC</text>
+      <text x="365" y="30" text-anchor="middle" font-size="7" fill="#a29bfe" opacity="0.5" font-family="'Courier New', monospace">glm-5 · Tool Model</text>
+      <text x="365" y="42" text-anchor="middle" font-size="6" fill="#a29bfe" opacity="0.3" font-family="'Courier New', monospace">SECONDARY PROVIDER</text>
+
+      <!-- SearXNG -->
+      <rect x="500" y="0" width="200" height="50" rx="4" fill="#0a1a0a" stroke="#55efc4" stroke-width="1"/>
+      <text x="600" y="16" text-anchor="middle" font-size="11" fill="#55efc4" font-family="'Courier New', monospace" font-weight="bold">SEARXNG</text>
+      <text x="600" y="30" text-anchor="middle" font-size="7" fill="#55efc4" opacity="0.5" font-family="'Courier New', monospace">Self-Hosted Search</text>
+      <text x="600" y="42" text-anchor="middle" font-size="6" fill="#55efc4" opacity="0.3" font-family="'Courier New', monospace">WEB SEARCH ENGINE</text>
+
+      <!-- Git -->
+      <rect x="720" y="0" width="180" height="50" rx="4" fill="#0a0a1a" stroke="#feca57" stroke-width="1"/>
+      <text x="810" y="16" text-anchor="middle" font-size="11" fill="#feca57" font-family="'Courier New', monospace" font-weight="bold">GIT</text>
+      <text x="810" y="30" text-anchor="middle" font-size="7" fill="#feca57" opacity="0.5" font-family="'Courier New', monospace">VCS Integration</text>
+      <text x="810" y="42" text-anchor="middle" font-size="6" fill="#feca57" opacity="0.3" font-family="'Courier New', monospace">VERSION CONTROL</text>
+
+      <!-- Terminal -->
+      <rect x="920" y="0" width="180" height="50" rx="4" fill="#0a0a1a" stroke="#74b9ff" stroke-width="1"/>
+      <text x="1010" y="16" text-anchor="middle" font-size="11" fill="#74b9ff" font-family="'Courier New', monospace" font-weight="bold">TERMINAL</text>
+      <text x="1010" y="30" text-anchor="middle" font-size="7" fill="#74b9ff" opacity="0.5" font-family="'Courier New', monospace">PTY / SSH</text>
+      <text x="1010" y="42" text-anchor="middle" font-size="6" fill="#74b9ff" opacity="0.3" font-family="'Courier New', monospace">REMOTE EXECUTION</text>
+
+      <!-- Settings -->
+      <rect x="1120" y="0" width="180" height="50" rx="4" fill="#0a0a1a" stroke="#fdcb6e" stroke-width="1"/>
+      <text x="1210" y="16" text-anchor="middle" font-size="11" fill="#fdcb6e" font-family="'Courier New', monospace" font-weight="bold">settings.json</text>
+      <text x="1210" y="30" text-anchor="middle" font-size="7" fill="#fdcb6e" opacity="0.5" font-family="'Courier New', monospace">User Config</text>
+      <text x="1210" y="42" text-anchor="middle" font-size="6" fill="#fdcb6e" opacity="0.3" font-family="'Courier New', monospace">UNIQUE CONFIG ENTRY</text>
+
+      <!-- MCP Servers -->
+      <rect x="1320" y="0" width="180" height="50" rx="4" fill="#0a0a1a" stroke="#e84393" stroke-width="1"/>
+      <text x="1410" y="16" text-anchor="middle" font-size="11" fill="#e84393" font-family="'Courier New', monospace" font-weight="bold">MCP Servers</text>
+      <text x="1410" y="30" text-anchor="middle" font-size="7" fill="#e84393" opacity="0.5" font-family="'Courier New', monospace">MCP Protocol</text>
+      <text x="1410" y="42" text-anchor="middle" font-size="6" fill="#e84393" opacity="0.3" font-family="'Courier New', monospace">EXTERNAL TOOLS</text>
+
+      <!-- Python Compare -->
+      <rect x="1520" y="0" width="230" height="50" rx="4" fill="#0a1a0a" stroke="#00d4ff" stroke-width="1"/>
+      <text x="1635" y="16" text-anchor="middle" font-size="11" fill="#00d4ff" font-family="'Courier New', monospace" font-weight="bold">anvil-compare.py</text>
+      <text x="1635" y="30" text-anchor="middle" font-size="7" fill="#00d4ff" opacity="0.5" font-family="'Courier New', monospace">Python Comparison System</text>
+      <text x="1635" y="42" text-anchor="middle" font-size="6" fill="#00d4ff" opacity="0.3" font-family="'Courier New', monospace">BENCHMARK & EVALUATION</text>
+    </g>
+  </g>
+
+  <!-- ===== 右侧数据流连接 ===== -->
+
+  <!-- 数据流箭头 (左侧垂直) -->
+  <g opacity="0.3">
+    <!-- CLI -> Runtime -->
+    <line x1="150" y1="270" x2="150" y2="285" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+    <!-- Runtime -> API -->
+    <line x1="150" y1="535" x2="150" y2="550" stroke="#00e676" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+    <!-- API -> Tools -->
+    <line x1="150" y1="675" x2="150" y2="690" stroke="#a29bfe" stroke-width="1.5" marker-end="url(#arrowPurple)"/>
+    <!-- Tools -> Commands -->
+    <line x1="150" y1="835" x2="150" y2="850" stroke="#feca57" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+    <!-- Commands -> External -->
+    <line x1="150" y1="1000" x2="150" y2="1020" stroke="#fd79a8" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+  </g>
+
+  <!-- ===== 底部状态栏 ===== -->
+  <g transform="translate(80, 1145)">
+    <rect x="0" y="0" width="1760" height="40" rx="4" fill="#060d1a" stroke="#00d4ff" stroke-width="0.5" opacity="0.5"/>
+    <text x="15" y="25" font-size="10" fill="#555" font-family="'Courier New', monospace" letter-spacing="1">ANVIL v0.1.0</text>
+    <text x="220" y="25" font-size="10" fill="#555" font-family="'Courier New', monospace" letter-spacing="1">RUST 2021 EDITION</text>
+    <text x="450" y="25" font-size="10" fill="#555" font-family="'Courier New', monospace" letter-spacing="1">WORKSPACE 9 CRATES</text>
+
+    <text x="880" y="25" text-anchor="middle" font-size="8" fill="#00d4ff" opacity="0.3" font-family="'Courier New', monospace" letter-spacing="2">[ SYSTEM ONLINE · CYBER MONITOR · AI CODING ASSISTANT ]</text>
+
+    <text x="1580" y="25" text-anchor="end" font-size="9" fill="#555" font-family="'Courier New', monospace" letter-spacing="1">PRINCIPLES: READ · WRITE · EXECUTE · SEARCH</text>
+    <circle cx="1605" cy="20" r="3" fill="#00e676" opacity="0.6"/>
+    <text x="1615" y="25" font-size="8" fill="#00e676" opacity="0.4" font-family="'Courier New', monospace">ACTIVE</text>
+  </g>
+
+  <!-- ===== Sci-Fi 装饰元素 ===== -->
+  <g opacity="0.15">
+    <!-- 十字准星 -->
+    <circle cx="1860" cy="80" r="20" fill="none" stroke="#00d4ff" stroke-width="0.5"/>
+    <line x1="1840" y1="80" x2="1880" y2="80" stroke="#00d4ff" stroke-width="0.5"/>
+    <line x1="1860" y1="60" x2="1860" y2="100" stroke="#00d4ff" stroke-width="0.5"/>
+    <circle cx="1860" cy="80" r="3" fill="#00d4ff"/>
+
+    <!-- 角落装饰 -->
+    <path d="M 60 60 L 60 50 L 70 50" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.3"/>
+    <path d="M 1860 60 L 1870 60 L 1870 50" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.3"/>
+    <path d="M 60 1230 L 60 1240 L 70 1240" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.3"/>
+    <path d="M 1860 1230 L 1870 1230 L 1870 1240" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.3"/>
+  </g>
+
+  <!-- 科技感角标 -->
+  <g font-family="'Courier New', monospace" font-size="7" fill="#00d4ff" opacity="0.2">
+    <text x="80" y="1270">SYS_MAP_v2.1</text>
+    <text x="1840" y="1270" text-anchor="end">COMPILED: 2026-05-24T21:54:00Z</text>
+  </g>
+</svg>

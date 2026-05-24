@@ -802,9 +802,9 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        component_contains_glob, derive_glob_walk_root, edit_file, expand_braces, glob_search,
-        grep_search, is_symlink_escape, read_file, read_file_in_workspace, write_file,
-        GrepSearchInput, MAX_WRITE_SIZE,
+        component_contains_glob, derive_glob_walk_root, detect_git_root, edit_file,
+        expand_braces, glob_search, grep_search, is_symlink_escape, read_file,
+        read_file_in_workspace, write_file, GrepSearchInput, MAX_WRITE_SIZE,
     };
 
     fn temp_path(name: &str) -> std::path::PathBuf {
@@ -1030,5 +1030,49 @@ mod tests {
         assert!(component_contains_glob("**"));
         assert!(component_contains_glob("*.rs"));
         assert!(!component_contains_glob("src"));
+    }
+
+    #[test]
+    fn detect_git_root_returns_some_when_inside_a_git_repo() {
+        // If the current directory is within a git repo (as this project is),
+        // detect_git_root() should return Some with a non-empty path.
+        let root = detect_git_root();
+        assert!(
+            root.is_some(),
+            "expected detect_git_root() to find the git root inside this project"
+        );
+        let path = root.unwrap();
+        assert!(
+            path.is_absolute(),
+            "detect_git_root() should return an absolute path, got: {path:?}"
+        );
+        assert!(
+            path.join(".git").exists() || path.join(".git").is_symlink(),
+            "detect_git_root() should point to a directory containing .git, got: {path:?}"
+        );
+    }
+
+    #[test]
+    fn detect_git_root_fails_outside_repo() {
+        // A temp directory is not a git repo, so detect_git_root() should return None.
+        let temp = temp_path("no-git");
+        std::fs::create_dir_all(&temp).expect("temp dir should be created");
+
+        // Temporarily change directory to the temp dir to test detection
+        let original_cwd = std::env::current_dir().ok();
+        std::env::set_current_dir(&temp).expect("set cwd to temp dir");
+
+        let root = detect_git_root();
+
+        // Restore original cwd immediately
+        if let Some(cwd) = original_cwd {
+            std::env::set_current_dir(cwd).expect("restore original cwd");
+        }
+
+        assert!(
+            root.is_none(),
+            "detect_git_root() should return None outside a git repo, got: {root:?}"
+        );
+        let _ = std::fs::remove_dir_all(&temp);
     }
 }

@@ -5348,8 +5348,7 @@ impl LiveCli {
             }
             Err(error) => {
                 runtime.shutdown_plugins()?;
-                let error_msg = error.to_string();
-                if error_msg == "cancelled" {
+                if error.is_cancelled() {
                     write!(
                         stdout,
                         "\x1b[1A\x1b[2K\x1b[38;5;244m⚠ Interrupted\x1b[0m\n"
@@ -5362,7 +5361,7 @@ impl LiveCli {
                 }
                 stdout.flush()?;
                 // Don't propagate "cancelled" — return to REPL prompt.
-                if error_msg == "cancelled" {
+                if error.is_cancelled() {
                     Ok(())
                 } else {
                     Err(Box::new(error))

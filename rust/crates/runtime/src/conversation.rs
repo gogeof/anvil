@@ -95,11 +95,23 @@ pub struct RuntimeError {
 }
 
 impl RuntimeError {
+    /// The canonical message used for Ctrl+C / cancelled operations.
+    /// External consumers should use [`RuntimeError::is_cancelled`] instead
+    /// of comparing against this string directly.
+    pub const CANCELLED_MSG: &'static str = "cancelled";
+
     #[must_use]
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
         }
+    }
+
+    /// Returns `true` when the error represents a Ctrl+C / user-interrupt
+    /// cancellation. Prefer this over string comparison with the message.
+    #[must_use]
+    pub fn is_cancelled(&self) -> bool {
+        self.message == Self::CANCELLED_MSG
     }
 }
 
@@ -333,7 +345,7 @@ where
             if let Some(count) = rollback_to {
                 self.session.messages.truncate(count);
             }
-            Err(RuntimeError::new("cancelled"))
+            Err(RuntimeError::new(RuntimeError::CANCELLED_MSG))
         } else {
             Ok(())
         }
@@ -910,12 +922,13 @@ mod tests {
     };
     use crate::compact::CompactionConfig;
     use crate::config::{RuntimeFeatureConfig, RuntimeHookConfig};
+    use crate::hooks::HookAbortSignal;
     use crate::permissions::{
         PermissionMode, PermissionPolicy, PermissionPromptDecision, PermissionPrompter,
         PermissionRequest,
     };
     use crate::prompt::{ProjectContext, SystemPromptBuilder};
-    use crate::session::{ContentBlock, MessageRole, Session};
+    use crate::session::{ContentBlock, ConversationMessage, MessageRole, Session};
     use crate::usage::TokenUsage;
     use crate::ToolError;
     use std::fs;
@@ -2076,5 +2089,164 @@ mod tests {
 
         // then
         assert!(!summary.assistant_messages.is_empty());
+    }
+
+    #[test]
+    fn runtime_error_is_cancelled_returns_true_for_cancelled_error() {
+        let error = RuntimeError::new(RuntimeError::CANCELLED_MSG);
+        assert!(error.is_cancelled());
+    }
+
+    #[test]
+    fn runtime_error_is_cancelled_returns_false_for_other_errors() {
+        let error = RuntimeError::new("something went wrong");
+        assert!(!error.is_cancelled());
+    }
+
+    #[test]
+    fn runtime_error_is_cancelled_returns_false_for_empty_message() {
+        let error = RuntimeError::new("");
+        assert!(!error.is_cancelled());
+    }
+
+    #[test]
+    fn runtime_error_cancelled_msg_is_correct() {
+        assert_eq!(RuntimeError::CANCELLED_MSG, "cancelled");
+    }
+
+    #[test]
+    fn check_aborted_returns_err_when_signal_is_set() {
+        struct FailingApi;
+        impl ApiClient for FailingApi {
+            fn stream(
+                &mut self,
+                _request: ApiRequest,
+            ) -> Result<Vec<AssistantEvent>, RuntimeError> {
+                Err(RuntimeError::new("upstream failed"))
+            }
+            fn model_name(&self) -> &str {
+                "deepseek-v4-pro"
+            }
+        }
+
+        let abort_signal = HookAbortSignal::new();
+        abort_signal.abort();
+
+        let mut runtime = ConversationRuntime::new(
+            Session::new(),
+            FailingApi,
+            StaticToolExecutor::new(),
+            PermissionPolicy::new(PermissionMode::DangerFullAccess),
+            vec!["system".to_string()],
+        )
+        .with_hook_abort_signal(abort_signal);
+
+        let result = runtime.run_turn("hello", None);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.is_cancelled(), "expected cancelled error, got: {err}");
+    }
+
+    #[test]
+    fn check_aborted_rolls_back_session_when_signal_is_set_with_state() {
+        // Create a runtime that adds some messages then check_aborted rolls them back.
+        // We set the abort signal in the tool handler so that after the first tool
+        // execution completes, the next check_aborted before the second API call
+        // will catch it and roll back the session.
+        struct AbortAfterFirstToolApi {
+            called: bool,
+        }
+
+        impl ApiClient for AbortAfterFirstToolApi {
+            fn stream(
+                &mut self,
+                _request: ApiRequest,
+            ) -> Result<Vec<AssistantEvent>, RuntimeError> {
+                if !self.called {
+                    self.called = true;
+                    // First call: produce a ToolUse so we loop back.
+                    Ok(vec![
+                        AssistantEvent::ToolUse {
+                            id: "tu-abort".to_string(),
+                            name: "echo".to_string(),
+                            input: "payload".to_string(),
+                        },
+                        AssistantEvent::MessageStop,
+                    ])
+                } else {
+                    // Second call should not be reached because check_aborted
+                    // will catch the signal before calling stream().
+                    Err(RuntimeError::new("unexpected second API call"))
+                }
+            }
+
+            fn model_name(&self) -> &str {
+                "deepseek-v4-pro"
+            }
+        }
+
+        let abort_signal = HookAbortSignal::new();
+        let signal_clone = abort_signal.clone();
+
+        let mut runtime = ConversationRuntime::new(
+            Session::new(),
+            AbortAfterFirstToolApi { called: false },
+            StaticToolExecutor::new().register("echo", move |_input| {
+                // Set the abort signal during tool execution.
+                // check_aborted will catch it on the next iteration.
+                signal_clone.abort();
+                Ok("ok".to_string())
+            }),
+            PermissionPolicy::new(PermissionMode::DangerFullAccess),
+            vec!["system".to_string()],
+        )
+        .with_hook_abort_signal(abort_signal);
+
+        let result = runtime.run_turn("test rollback", None);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.is_cancelled(), "expected cancelled error, got: {err}");
+
+        // The session should have only the user message rolled back.
+        // The user message was pushed before turn_start_msg_count was saved,
+        // so rollback preserves it.
+        assert_eq!(
+            runtime.session().messages.len(),
+            1,
+            "session should be rolled back to just the user message, got {} messages: {:?}",
+            runtime.session().messages.len(),
+            runtime.session().messages,
+        );
+    }
+
+    #[test]
+    fn check_aborted_returns_ok_when_signal_is_not_set() {
+        // No abort signal set — run_turn should succeed.
+        struct SimpleApi;
+        impl ApiClient for SimpleApi {
+            fn stream(
+                &mut self,
+                _request: ApiRequest,
+            ) -> Result<Vec<AssistantEvent>, RuntimeError> {
+                Ok(vec![
+                    AssistantEvent::TextDelta("ok".to_string()),
+                    AssistantEvent::MessageStop,
+                ])
+            }
+            fn model_name(&self) -> &str {
+                "deepseek-v4-pro"
+            }
+        }
+
+        let mut runtime = ConversationRuntime::new(
+            Session::new(),
+            SimpleApi,
+            StaticToolExecutor::new(),
+            PermissionPolicy::new(PermissionMode::DangerFullAccess),
+            vec!["system".to_string()],
+        );
+
+        let result = runtime.run_turn("hello", None);
+        assert!(result.is_ok());
     }
 }
