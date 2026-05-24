@@ -217,7 +217,7 @@ impl Session {
     pub fn load_from_path(path: impl AsRef<Path>) -> Result<Self, SessionError> {
         let path = path.as_ref();
         let contents = fs::read_to_string(path)?;
-        let session = match JsonValue::parse(&contents) {
+        let mut session = match JsonValue::parse(&contents) {
             Ok(value)
                 if value
                     .as_object()
@@ -227,6 +227,11 @@ impl Session {
             }
             Err(_) | Ok(_) => Self::from_jsonl(&contents)?,
         };
+        // Strip orphaned tool calls so the session is in a valid state
+        // when resumed. Sessions can be saved mid-turn (e.g. interrupted
+        // during tool execution), leaving tool_use blocks without matching
+        // tool_result messages — the API rejects these.
+        session.strip_orphan_tool_calls();
         Ok(session.with_persistence_path(path.to_path_buf()))
     }
 
@@ -248,6 +253,61 @@ impl Session {
 
     pub fn push_user_text(&mut self, text: impl Into<String>) -> Result<(), SessionError> {
         self.push_message(ConversationMessage::user_text(text))
+    }
+
+    /// Strip trailing assistant messages that contain `ToolUse` blocks without
+    /// matching `ToolResult` messages. This ensures the session is in a valid
+    /// state when resumed — the API rejects requests with orphaned tool calls.
+    ///
+    /// Returns the number of messages removed.
+    pub fn strip_orphan_tool_calls(&mut self) -> usize {
+        let original_len = self.messages.len();
+        loop {
+            let Some(last) = self.messages.last() else {
+                break;
+            };
+            let has_unmatched_tool_use = match last.role {
+                MessageRole::Assistant => last.blocks.iter().any(|block| match block {
+                    ContentBlock::ToolUse { id, .. } => {
+                        // Check if any subsequent message has a matching ToolResult.
+                        let tool_use_idx = self.messages.len() - 1;
+                        !self.messages[tool_use_idx + 1..].iter().any(|m| {
+                            m.blocks.iter().any(|b| match b {
+                                ContentBlock::ToolResult { tool_use_id, .. } => tool_use_id == id,
+                                _ => false,
+                            })
+                        })
+                    }
+                    _ => false,
+                }),
+                MessageRole::Tool => {
+                    // A Tool role message without a preceding assistant message
+                    // with a matching tool_use_id is orphaned.
+                    let tool_idx = self.messages.len() - 1;
+                    let has_matching_assistant = self.messages[..tool_idx].iter().any(|m| {
+                        m.blocks.iter().any(|b| match b {
+                            ContentBlock::ToolUse { id, .. } => {
+                                last.blocks.iter().any(|lb| match lb {
+                                    ContentBlock::ToolResult { tool_use_id, .. } => {
+                                        tool_use_id == id
+                                    }
+                                    _ => false,
+                                })
+                            }
+                            _ => false,
+                        })
+                    });
+                    !has_matching_assistant
+                }
+                _ => false,
+            };
+            if has_unmatched_tool_use {
+                self.messages.pop();
+            } else {
+                break;
+            }
+        }
+        original_len - self.messages.len()
     }
 
     /// Rewind the session by removing the last `turns` conversation turns.

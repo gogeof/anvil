@@ -32,6 +32,14 @@
   - `AutoCompactionEvent` 新增 `budget_summary: Option<String>` 字段
   - `maybe_auto_compact()` 在触发压缩时同步估算并输出上下文预算信息
 
+### Bug 修复
+
+#### 会话切换时 orphan tool calls 导致 API 400 错误
+- **变更文件:** `rust/crates/runtime/src/session.rs`
+- **根因:** 会话在工具调用过程中被中断（AI 发出 tool_use 但 tool_result 未返回），保存后切换回该会话时，API 收到不完整的 tool_call → tool_result 对，返回 400
+- **修复:** `Session::strip_orphan_tool_calls()` — 加载会话时自动删除尾部那些缺少对应 tool_result 的 tool_use 消息，以及缺少对应 assistant 的 tool_result 消息
+- **自动生效:** `load_from_path()` 中自动调用，覆盖 resume 和 session switch 两条路径
+
 ---
 
 ## 版本规范
