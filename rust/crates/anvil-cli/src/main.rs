@@ -5444,7 +5444,7 @@ impl LiveCli {
                 "message": final_assistant_text(&summary),
                 "model": self.model,
                 "iterations": summary.iterations,
-                "auto_compaction": summary.auto_compaction.map(|event| json!({
+                "auto_compaction": summary.auto_compaction.as_ref().map(|event| json!({
                     "removed_messages": event.removed_message_count,
                     "notice": format_auto_compaction_notice(event.removed_message_count),
                 })),
