@@ -325,6 +325,16 @@ where
         }
     }
 
+    /// Returns `Err(RuntimeError::new("cancelled"))` if Ctrl+C was pressed.
+    /// Call this before long-running operations (API calls, tool execution).
+    fn check_aborted(&self) -> Result<(), RuntimeError> {
+        if self.hook_abort_signal.is_aborted() {
+            Err(RuntimeError::new("cancelled"))
+        } else {
+            Ok(())
+        }
+    }
+
     #[allow(clippy::too_many_lines)]
     pub fn run_turn(
         &mut self,
@@ -332,6 +342,9 @@ where
         mut prompter: Option<&mut dyn PermissionPrompter>,
     ) -> Result<TurnSummary, RuntimeError> {
         let user_input = user_input.into();
+
+        // Check for Ctrl+C before starting.
+        self.check_aborted()?;
 
         // ROADMAP #38: Session-health canary - probe if context was compacted
         if self.session.compaction.is_some() {
@@ -363,6 +376,9 @@ where
                 self.record_turn_failed(iterations, &error);
                 return Err(error);
             }
+
+            // Check for Ctrl+C before making the API call.
+            self.check_aborted()?;
 
             let request = ApiRequest {
                 system_prompt: self.system_prompt.clone(),
@@ -476,6 +492,8 @@ where
                 let result_message = match permission_outcome {
                     PermissionOutcome::Allow => {
                         self.record_tool_started(iterations, &tool_name);
+                        // Check for Ctrl+C before executing a tool.
+                        self.check_aborted()?;
                         let (mut output, mut is_error) =
                             match self.tool_executor.execute(&tool_name, &effective_input) {
                                 Ok(output) => (output, false),

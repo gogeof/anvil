@@ -40,6 +40,14 @@
 - **修复:** `Session::strip_orphan_tool_calls()` — 加载会话时自动删除尾部那些缺少对应 tool_result 的 tool_use 消息，以及缺少对应 assistant 的 tool_result 消息
 - **自动生效:** `load_from_path()` 中自动调用，覆盖 resume 和 session switch 两条路径
 
+#### REPL 模式下 Ctrl+C 中断当前操作
+- **变更文件:** `rust/crates/runtime/src/conversation.rs`, `rust/crates/anvil-cli/src/main.rs`
+- **问题:** run_turn() 是同步阻塞的，Ctrl+C 无法中断正在执行的 API 调用或 bash 命令，必须杀死整个进程
+- **修复:**
+  - `ConversationRuntime::check_aborted()` — 检查 `hook_abort_signal.is_aborted()`，如果被中断返回 `RuntimeError::new("cancelled")`
+  - API 调用前和工具执行前调用 `check_aborted()`，快速响应中断
+  - CLI 收到 "cancelled" 错误时显示 `⚠ Interrupted` 而非 `🔨 Failed`，并返回 REPL 提示符而非退出
+
 ---
 
 ## 版本规范

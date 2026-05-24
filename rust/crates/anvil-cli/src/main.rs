@@ -5348,9 +5348,25 @@ impl LiveCli {
             }
             Err(error) => {
                 runtime.shutdown_plugins()?;
-                write!(stdout, "\x1b[1A\x1b[2K\x1b[38;5;244m🔨 Failed\x1b[0m\n")?;
+                let error_msg = error.to_string();
+                if error_msg == "cancelled" {
+                    write!(
+                        stdout,
+                        "\x1b[1A\x1b[2K\x1b[38;5;244m⚠ Interrupted\x1b[0m\n"
+                    )?;
+                } else {
+                    write!(
+                        stdout,
+                        "\x1b[1A\x1b[2K\x1b[38;5;244m🔨 Failed\x1b[0m\n"
+                    )?;
+                }
                 stdout.flush()?;
-                Err(Box::new(error))
+                // Don't propagate "cancelled" — return to REPL prompt.
+                if error_msg == "cancelled" {
+                    Ok(())
+                } else {
+                    Err(Box::new(error))
+                }
             }
         }
     }
