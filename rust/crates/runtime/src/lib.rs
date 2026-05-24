@@ -16,6 +16,7 @@ mod bootstrap;
 pub mod branch_lock;
 pub mod compact;
 pub mod config;
+pub mod context_budget;
 pub mod file_cache;
 pub mod config_validate;
 mod conversation;
